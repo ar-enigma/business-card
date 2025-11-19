@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Enigma AR Experience</title>
+
+  <!-- Tailwind for quick styling -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+
+  <!-- A-Frame and MindAR (deferred to avoid blocking) -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" defer></script>
+
+  <style>
+    html,body {
+      height:100%;
+      margin:0;
+      background:#000;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* Safe area and full-screen scene */
+    a-scene, #ar-root {
+      width:100%;
+      height:100%;
+      position:fixed;
+      inset:0;
+    }
+
+    /* Instruction box */
+    #ar-instructions {
+      position:fixed;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      z-index:999;
+      background:rgba(17,24,39,0.88); /* dark bg */
+      color:#fff;
+      padding:1.25rem;
+      border-radius:12px;
+      text-align:center;
+      pointer-events:auto; /* allow taps */
+      box-shadow:0 10px 30px rgba(2,6,23,0.6);
+      transition:opacity .35s ease, transform .25s ease;
+      max-width:90%;
+    }
+
+    #start-btn {
+      margin-top:0.75rem;
+      display:inline-block;
+      background:linear-gradient(90deg,#06b6d4,#3b82f6);
+      color:#fff;
+      padding:.5rem 1rem;
+      border-radius:8px;
+      border:0;
+      font-weight:600;
+      font-size:1rem;
+    }
+
+    #status {
+      margin-top:0.5rem;
+      font-size:.9rem;
+      color:#d1d5db;
+    }
+
+    /* Respect reduced motion preferences */
+    @media (prefers-reduced-motion: reduce) {
+      .spin-animation {
+        animation: none !important;
+      }
+    }
+
+    /* Hidden utility */
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <div id="ar-root">
+    <a-scene
+      embedded
+      mindar-image="autoStart: false; imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 10000;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights: true"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- Replace or extend with your content -->
+        <a-box
+          id="cube"
+          class="spin-animation"
+          position="0 0 0.5"
+          rotation="0 0 0"
+          scale="0.3 0.3 0.3"
+          material="color: #ff3b30; opacity: 0.9; metalness: 0.5; roughness: 0.2"
+          animation="property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true"
+        ></a-box>
+
+        <a-text
+          value="ENIGMA DIGITAL"
+          position="0 0.5 0.5"
+          align="center"
+          color="#ffffff"
+          width="1.5"
+        ></a-text>
+      </a-entity>
+    </a-scene>
+  </div>
+
+  <!-- Instructions & controls -->
+  <div id="ar-instructions" role="region" aria-live="polite" aria-atomic="true">
+    <div style="font-weight:700; font-size:1.125rem">AR Experience Ready</div>
+    <div style="margin-top:.25rem; color:#d1d5db">Point your camera at the Enigma business card when ready.</div>
+
+    <button id="start-btn" aria-label="Start augmented reality">Start AR</button>
+    <div id="status" aria-hidden="false">Tap "Start AR" to begin — camera permission will be requested.</div>
+    <div id="error" class="hidden" role="alert" style="color:#ffb4b4; margin-top:.5rem;"></div>
+  </div>
+
+  <script>
+    (function () {
+      // Defer execution until A-Frame and MindAR are available
+      function waitForSceneReady() {
+        return new Promise((resolve) => {
+          const check = () => {
+            const scene = document.querySelector('a-scene');
+            if (scene && scene.hasLoaded) return resolve(scene);
+            if (scene) {
+              scene.addEventListener('loaded', () => resolve(scene), { once: true });
+            } else {
+              setTimeout(check, 50);
+            }
+          };
+          check();
+        });
+      }
+
+      function log(msg) {
+        console.debug('[ENIGMA AR]', msg);
+      }
+
+      async function init() {
+        const startBtn = document.getElementById('start-btn');
+        const status = document.getElementById('status');
+        const errorEl = document.getElementById('error');
+        const instructions = document.getElementById('ar-instructions');
+
+        const scene = await waitForSceneReady();
+        const mindarComponent = scene.components && scene.components['mindar-image'];
+
+        if (!mindarComponent) {
+          errorEl.classList.remove('hidden');
+          errorEl.textContent = 'MindAR component not found. Make sure the MindAR script loaded.';
+          console.error('MindAR component missing on a-scene.');
+          return;
+        }
+
+        // When AR is ready -> reduce instruction prominence
+        scene.addEventListener('arReady', () => {
+          log('MindAR is ready.');
+          instructions.style.opacity = '0.85';
+        });
+
+        const targetEntity = document.querySelector('a-entity[mindar-image-target]');
+        targetEntity.addEventListener('targetFound', () => {
+          log('targetFound');
+          instructions.style.opacity = '0';
+        });
+        targetEntity.addEventListener('targetLost', () => {
+          log('targetLost');
+          instructions.style.opacity = '1';
+        });
+
+        // Try to start mindar after user gesture (some browsers require a user gesture for camera)
+        startBtn.addEventListener('click', async () => {
+          errorEl.classList.add('hidden');
+          status.textContent = 'Requesting camera permission…';
+
+          try {
+            // If device-orientation-permission-ui is needed on iOS, prompt explicitly:
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+              // iOS 13+ requires explicit permission for motion/orientation events
+              try {
+                const res = await DeviceOrientationEvent.requestPermission();
+                log('DeviceOrientation permission: ' + res);
+              } catch (e) {
+                log('DeviceOrientation permission request failed or was dismissed.');
+              }
+            }
+
+            // Start MindAR via its component API
+            // The MindAR A-Frame integration exposes a start() and stop() on the scene's mindar-image component
+            if (mindarComponent.start) {
+              await mindarComponent.start();
+              status.textContent = 'AR started — point your camera at the card.';
+            } else {
+              // Fallback attempt: call play() on the scene as a fallback
+              if (scene.play) scene.play();
+              status.textContent = 'AR started.';
+            }
+
+            // remove focus from button to allow taps to pass through
+            startBtn.blur();
+
+          } catch (err) {
+            console.error(err);
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = 'Could not start AR — permission denied or camera unavailable.';
+            status.textContent = 'Start failed';
+          }
+        });
+      }
+
+      // Initialize when scripts finished parsing
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(init, 50);
+      } else {
+        window.addEventListener('DOMContentLoaded', init, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>
