@@ -3,176 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enigma AR Experience (Three.js)</title>
+    <title>Enigma AR Experience (A-Frame)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- A-Frame and MindAR Scripts from CDN (Most Stable) -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
         /* Mobile-first styling */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #0d1117;
+            margin: 0;
+            color: white;
+            overflow: hidden; 
+        }
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: white;
-            padding: 20px;
-            overflow: hidden; 
+            z-index: 100; /* Ensure UI is on top */
+            pointer-events: none; /* Allows clicks to pass through to the AR scene */
         }
         .container {
             max-width: 400px;
-            width: 100%;
+            width: 90%;
             padding: 30px;
             background-color: #161b22;
             border-radius: 12px;
             box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
             text-align: center;
-            position: relative;
-            z-index: 10;
+            pointer-events: auto; /* Re-enable pointer events for the box */
         }
-        .error-box {
-            background-color: #330c0c;
-            border: 1px solid #ff4d4d;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 0.9rem;
-        }
-        .success-box {
-            background-color: #0c3316;
-            border: 1px solid #4dff4d;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 0.9rem;
-        }
-        /* Canvas is hidden until AR starts */
-        #arCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: none; 
-            z-index: 5;
+        .start-button {
+            pointer-events: auto; /* Ensure button is clickable */
         }
     </style>
 </head>
 <body>
-    <div class="container" id="mainContainer">
-        <h1 class="text-xl font-bold mb-4">Enigma AR Experience</h1>
-        <p class="text-sm text-gray-400 mb-6">Tap Start to activate your camera for image tracking.</p>
+    
+    <!-- 1. The AR Scene (Hidden initially) -->
+    <a-scene 
+        id="arScene"
+        mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;" 
+        embedded 
+        renderer="colorManagement: true, physicallyCorrectLights: true" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false"
+        style="display: none; width: 100vw; height: 100vh;"
+    >
+        <!-- Assets for the 3D model (Placeholder Cube) -->
+        <a-assets>
+            <!-- No model needed for cube, but you would put your GLTF here -->
+        </a-assets>
 
-        <button id="startButton" 
-                class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition duration-150 ease-in-out">
-            Start AR Experience
-        </button>
+        <!-- Camera Setup -->
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <div id="statusMessage" class="success-box mt-4">
-            <p id="errorText" class="font-mono text-xs">Loading AR scripts from CDN...</p>
+        <!-- AR Content for Target 0 -->
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- Red Cube Content -->
+            <a-box 
+                color="#FF0000" 
+                height="0.3" 
+                width="0.3" 
+                depth="0.3" 
+                position="0 0 0.15" 
+                rotation="0 0 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
+            ></a-box>
+        </a-entity>
+    </a-scene>
+
+    <!-- 2. The Startup UI Overlay -->
+    <div class="ui-overlay" id="uiOverlay">
+        <div class="container">
+            <h1 class="text-2xl font-bold mb-4">Enigma AR Experience</h1>
+            <p class="text-sm text-gray-400 mb-6">Tap Start to activate your camera for image tracking.</p>
+
+            <button id="startButton" 
+                    class="start-button w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition duration-150 ease-in-out">
+                Start AR Experience
+            </button>
+
+            <div id="statusMessage" class="mt-4 p-3 rounded-lg text-sm bg-green-900 border border-green-700">
+                <p id="errorText">Awaiting user input. Ready.</p>
+            </div>
         </div>
     </div>
     
-    <!-- The canvas where Three.js will render the AR scene -->
-    <canvas id="arCanvas"></canvas>
-
-    <script type="module">
-        // --- USING STABLE CDN IMPORTS TO BYPASS LOCAL FILE/NAMING/CASE ERRORS ---
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.module.js'; 
-        import { MindARThree } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-three.prod.js'; 
-        // ----------------------------------------------------------------------
-
+    <script>
         const startButton = document.getElementById('startButton');
-        const arCanvas = document.getElementById('arCanvas');
-        const mainContainer = document.getElementById('mainContainer');
-        const statusMessage = document.getElementById('statusMessage');
+        const uiOverlay = document.getElementById('uiOverlay');
+        const arScene = document.getElementById('arScene');
         const errorText = document.getElementById('errorText');
-        
-        // --- Utility Functions ---
+        const statusMessage = document.getElementById('statusMessage');
+
         const showError = (message) => {
-            statusMessage.classList.remove('hidden', 'success-box');
-            statusMessage.classList.add('error-box');
+            statusMessage.classList.remove('bg-green-900', 'border-green-700');
+            statusMessage.classList.add('bg-red-900', 'border-red-700');
             errorText.innerText = message;
-        }
+        };
 
         const showSuccess = (message) => {
-            statusMessage.classList.remove('hidden', 'error-box');
-            statusMessage.classList.add('success-box');
+            statusMessage.classList.remove('bg-red-900', 'border-red-700');
+            statusMessage.classList.add('bg-green-900', 'border-green-700');
             errorText.innerText = message;
-        }
-        
-        // --- Core AR Initialization Function ---
-        const initializeAR = async () => {
-            // Hide startup UI and show canvas
-            mainContainer.style.display = 'none';
-            document.body.style.backgroundColor = 'black';
-            arCanvas.style.display = 'block';
+        };
 
-            showSuccess("Starting AR Engine. Waiting for camera permission request...");
+        const initializeAR = () => {
+            showSuccess("Requesting camera access...");
+            
+            // 1. Hide the UI and show the AR Scene
+            uiOverlay.style.display = 'none';
+            arScene.style.display = 'block';
 
-            try {
-                // Initialize MindAR
-                const mindarThree = new MindARThree({
-                    container: arCanvas,
-                    imageTargetSrc: 'targets.mind',
-                    filterMinCF: 0.0001, 
-                    filterBeta: 0.001,
-                    maxTrack: 2
-                });
-                
-                const { renderer, scene, camera } = mindarThree;
+            // 2. Start the A-Frame Scene (This triggers camera permission)
+            // We use setTimeout to ensure the DOM has updated before starting the heavy AR process
+            setTimeout(() => {
+                arScene.components['mindar-image'].start();
+                showSuccess("AR running. Point the camera at your image target.");
+            }, 500);
 
-                // Create a 3D object (red cube)
-                const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-                const material = new THREE.MeshPhongMaterial({ color: 0xFF0000 });
-                const cube = new THREE.Mesh(geometry, material);
-                
-                // Lighting
-                const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-                scene.add(light);
 
-                // Attach cube to the first anchor
-                const anchor = mindarThree.addAnchor(0); 
-                anchor.group.add(cube); 
-
-                // Start AR tracking (Camera prompt happens here)
-                await mindarThree.start();
-
-                showSuccess("AR Activated! Point the camera at your Enigma business card.");
-
-                // Animation loop
-                renderer.setAnimationLoop(() => {
-                    renderer.render(scene, camera);
-                    cube.rotation.x += 0.01;
-                    cube.rotation.y += 0.01;
-                });
-
-            } catch (error) {
-                console.error("MindAR Initialization Error:", error);
-                
-                // Show the start screen again with the error
-                document.body.style.backgroundColor = '#0d1117';
-                mainContainer.style.display = 'block';
-                arCanvas.style.display = 'none';
-
-                if (error.name === 'NotAllowedError' || error.message.includes('WebAssembly')) {
-                    // This is the Cross-Origin Isolation error we have been fighting. 
-                    // Netlify should prevent this, but if it still shows, it's a device issue.
-                    showError("CRITICAL: Camera blocked by browser security (COOP/COEP failed). This must be a browser/device security policy issue. Please check your browser's console for exact errors.");
-                } else if (error.name === 'NotFoundError') {
-                    showError("Start Failed: Camera not found on this device.");
-                } else {
-                    showError(`An unexpected error occurred: ${error.message}`);
-                }
-            }
+            // A-Frame/MindAR handles most errors internally, but we can listen for the critical 'arError' event
+            arScene.addEventListener('arError', (event) => {
+                uiOverlay.style.display = 'flex';
+                arScene.style.display = 'none';
+                console.error("AR Initialization Error:", event.detail.error);
+                showError("CRITICAL: Camera or AR initialization failed. Please check device permissions.");
+            });
         };
 
         startButton.addEventListener('click', initializeAR);
-        
-        // Initial check now only confirms the page loaded
+
+        // A-Frame loads dependencies asynchronously, so the page is 'Ready' when the DOM loads
         window.addEventListener('load', () => {
-            showSuccess("Page loaded. Click Start to begin.");
+             // Check if MindAR component loaded successfully
+            if (!AFRAME.components['mindar-image']) {
+                showError("MindAR or A-Frame failed to load from CDN. Check network connection.");
+            } else {
+                showSuccess("All AR libraries loaded successfully from CDN. Ready to start.");
+            }
         });
 
     </script>
