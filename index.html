@@ -165,6 +165,14 @@
           log('MindAR is ready.');
           instructions.style.opacity = '0.85';
         });
+        // Add MindAR's AR Error Handler
+        scene.addEventListener('arError', (event) => {
+          console.error('[MINDAR ERROR]', event);
+          errorEl.classList.remove('hidden');
+          errorEl.textContent = 'AR Failed to Start (Check targets.mind and console for errors).';
+          status.textContent = 'Initialization Failed';
+        });
+        
 
         const targetEntity = document.querySelector('a-entity[mindar-image-target]');
         targetEntity.addEventListener('targetFound', () => {
