@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enigma AR Launcher Test</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use a stable, tested MindAR CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <!-- 
+        *** IMPORTANT CHANGE HERE ***
+        Switched to unpkg.com CDN for MindAR to resolve the "failed to load" error.
+        This is a common fix when jsdelivr (used previously) is blocked by a network or firewall.
+    -->
+    <script src="https://unpkg.com/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         /* Modern, mobile-first styling for the container */
         body {
@@ -32,6 +36,14 @@
         .error-box {
             background-color: #330c0c;
             border: 1px solid #ff4d4d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        .success-box {
+            background-color: #0c3316;
+            border: 1px solid #4dff4d;
             padding: 15px;
             border-radius: 8px;
             margin-top: 20px;
@@ -76,50 +88,64 @@
             // First, try to remove the 'display: none' and append the scene to the DOM
             arScene.style.display = 'block'; 
             
-            // Check for MindAR object availability
+            // Perform a quick check to see if the MindAR library loaded after the button click
             if (typeof MindAR === 'undefined' || typeof MindAR.Image === 'undefined') {
-                 showError("MindAR library failed to load from CDN. Check network connection.");
+                 showError("CRITICAL: MindAR library failed to load from CDN. This may be a network block. Check the console for CORS errors.");
+                 // Immediately hide the button if the library itself is missing
+                 startButton.style.display = 'none';
                  return;
             }
 
+            statusMessage.classList.remove('error-box');
+            statusMessage.classList.add('success-box');
+            showError("MindAR library loaded successfully. Attempting to request camera permission...");
+            
             // Set up event listeners for the A-Frame component initialization
             arScene.addEventListener('mindar-image-initialized', () => {
-                statusMessage.classList.add('hidden');
-                console.log("MindAR Initialized Successfully!");
+                showSuccess("AR Initialized! Please point your camera at the target image.");
             });
 
-            // The main event we are debugging (this should show the camera prompt)
+            // Handle the camera access error
             arScene.addEventListener('camera-error', (event) => {
                 let errorMessage = event.detail.error.name || "Unknown Error";
                 // This is the error code that typically means COOP/COEP headers are missing
                 if (errorMessage === 'NotAllowedError') {
-                    showError("Error: Camera Access Preemptively Blocked (NotAllowedError). This usually means the browser is rejecting the WebAssembly thread due to missing Cross-Origin Isolation headers (COOP/COEP).");
+                    showError("Error: Camera Access Blocked (NotAllowedError). This is the Cross-Origin Isolation issue common on GitHub Pages. You must switch hosting (e.g., to Netlify) to set COOP/COEP headers.");
+                } else if (errorMessage === 'NotFoundError') {
+                    showError("Error: No camera or media device found on this device.");
                 } else {
-                    showError(`Camera failed to start: ${errorMessage}`);
+                    showError(`Camera failed to start: ${errorMessage}. Check browser settings.`);
                 }
                 console.error("Camera Error Details:", event.detail.error);
                 arScene.style.display = 'none'; // Hide scene on failure
+                startButton.style.display = 'block'; // Show button to retry
             });
-            
-            // If the scene is already present, trigger the MindAR component to start.
-            // On button click, the A-Frame component should automatically handle camera access.
+
+            // Hide the button and let A-Frame/MindAR handle the process
             startButton.style.display = 'none';
         };
 
         const showError = (message) => {
-            statusMessage.classList.remove('hidden');
+            statusMessage.classList.remove('hidden', 'success-box');
             statusMessage.classList.add('error-box');
+            errorText.innerText = message;
+        }
+
+        const showSuccess = (message) => {
+            statusMessage.classList.remove('hidden', 'error-box');
+            statusMessage.classList.add('success-box');
             errorText.innerText = message;
         }
 
         startButton.addEventListener('click', initializeAR);
         
-        // This is crucial: MindAR sometimes needs the DOM to be fully ready before initialization
         window.addEventListener('load', () => {
-            console.log("DOM and MindAR script loaded.");
+            // Check if the script loaded immediately on page load
+            if (typeof MindAR === 'undefined' || typeof MindAR.Image === 'undefined') {
+                 showError("MindAR library failed to load immediately on page load. Network or firewall block suspected.");
+            }
         });
 
     </script>
 </body>
 </html>
-
