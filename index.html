@@ -1,84 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enigma AR Experience (Fixed)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AR Enigma — Business Card</title>
+
+  <!-- A-Frame (1.2.0 chosen for mobile stability) -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+  <!-- MindAR A-Frame integration -->
+  <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body { margin: 0; font-family: 'Inter', sans-serif; background-color: #0d1117; color: white; overflow: hidden; }
-    .ui-overlay { position: fixed; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:100; pointer-events:none; }
-    .container { max-width:400px; width:90%; padding:30px; background:#161b22; border-radius:12px; box-shadow:0 4px 60px rgba(0,200,255,0.2); text-align:center; pointer-events:auto; }
-    .start-button { width:100%; padding:12px; background:#006aff; color:white; border:none; border-radius:8px; font-size:1rem; }
+    :root { --bg:#0d1117; --card:#161b22; --accent:#0ea5ff; color-scheme: dark; }
+    html,body { height:100%; margin:0; background:var(--bg); font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    /* Ensure the A-Frame canvas fills the screen */
+    a-scene, canvas, .a-canvas { width:100% !important; height:100% !important; position:fixed; left:0; top:0; }
+
+    /* Overlay UI */
+    .ui-overlay {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999;
+      pointer-events:none;
+    }
+    .panel {
+      width:min(420px,92%); background:var(--card); padding:22px; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,0.6);
+      text-align:center; color:#e6eef8; pointer-events:auto;
+    }
+    .start-btn {
+      width:100%; padding:12px 14px; border-radius:10px; border:0; font-weight:600; font-size:16px;
+      background:var(--accent); color:#022; cursor:pointer;
+    }
+    .muted { color:#9aa6b2; font-size:14px; margin-bottom:8px; }
+    .status { margin-top:12px; font-size:13px; color:#cde; min-height:20px; }
+    .notice { margin-top:8px; font-size:12px; color:#fbb; }
+    .small { font-size:12px; color:#9aa6b2; margin-top:10px; text-align:left; }
   </style>
 </head>
 <body>
-  <!-- Hidden Video -->
-  <video id="cameraVideo" playsinline style="display:none;"></video>
-
-  <!-- AR Scene -->
+  <!-- A-Frame + MindAR Scene -->
   <a-scene id="arScene"
-           mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; "
+           mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; showStats: false;"
            embedded
            color-space="sRGB"
            renderer="colorManagement: true, physicallyCorrectLights: true"
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false"
-           style="display: none; width:100vw; height:100vh;"
   >
-    <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Target 0: simple rotating red box -->
     <a-entity mindar-image-target="targetIndex: 0">
-      <a-box color="#FF0000" height="0.3" width="0.3" depth="0.3"
-             position="0 0 0.15"
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
-      ></a-box>
+      <a-box color="#FF5252" depth="0.28" height="0.28" width="0.28" position="0 0 0.14"
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
+      </a-box>
     </a-entity>
   </a-scene>
 
-  <!-- UI Overlay -->
+  <!-- Overlay UI -->
   <div class="ui-overlay" id="uiOverlay">
-    <div class="container">
-      <h1 style="font-size: 24px; margin-bottom:16px;">Enigma AR Experience</h1>
-      <p style="margin-bottom:24px; color:#ccc;">Tap Start to activate camera for image tracking.</p>
-      <button id="startButton" class="start-button">Start AR Experience</button>
-      <div id="statusMessage" style="margin-top: 20px; color:#0f0;"></div>
+    <div class="panel" id="panel">
+      <h2 style="margin:0 0 8px 0">Enigma AR — Business Card</h2>
+      <div class="muted">Tap Start to allow camera access and begin image tracking.</div>
+
+      <button id="startBtn" class="start-btn">Start AR Experience</button>
+      <div class="status" id="status">Waiting to start...</div>
+      <div class="notice" id="notice" style="display:none"></div>
+
+      <div class="small">
+        Hosting notes:
+        <ul style="margin:8px 0 0 16px; padding:0;">
+          <li>Must be served over <strong>HTTPS</strong> (or <code>localhost</code> for testing).</li>
+          <li>On Cloudflare, the subdomain must be <strong>DNS only (grey cloud)</strong>.</li>
+          <li>Place <code>targets.mind</code> in same folder as this <code>index.html</code>.</li>
+        </ul>
+      </div>
     </div>
   </div>
 
   <script>
-    const startButton = document.getElementById('startButton');
+    const startBtn = document.getElementById('startBtn');
+    const status = document.getElementById('status');
+    const notice = document.getElementById('notice');
     const uiOverlay = document.getElementById('uiOverlay');
     const arScene = document.getElementById('arScene');
-    const cameraVideo = document.getElementById('cameraVideo');
-    const statusMessage = document.getElementById('statusMessage');
 
-    const showStatus = (msg, isError = false) => {
-      statusMessage.style.color = isError ? '#f55' : '#0f0';
-      statusMessage.innerText = msg;
-    };
+    function setStatus(text, isError = false) {
+      status.innerText = text;
+      status.style.color = isError ? '#ff8080' : '#bfefff';
+    }
 
-    startButton.addEventListener('click', async () => {
-      showStatus('Requesting camera permission...');
+    function showNotice(text) {
+      notice.style.display = 'block';
+      notice.innerText = text;
+    }
+
+    // Quick environment checks
+    const isSecure = (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+    if (!isSecure) {
+      showNotice('Warning: This page is not served over HTTPS. Camera permission may be blocked. Test locally via http://localhost or host via HTTPS.');
+    }
+
+    // Wait for the A-Frame scene to load and mindar component to attach
+    arScene.addEventListener('loaded', () => {
+      setStatus('AR libraries loaded. Ready.');
+    });
+
+    startBtn.addEventListener('click', async () => {
+      setStatus('Requesting camera permission...');
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        cameraVideo.srcObject = stream;
-        cameraVideo.play();
+        // Trigger MindAR start (this will initiate camera permission flow)
+        const mindarComp = arScene.components['mindar-image'];
+        if (!mindarComp) {
+          setStatus('MindAR component not ready yet. Please wait a moment and tap Start again.', true);
+          return;
+        }
 
-        // show AR
-        arScene.style.display = 'block';
+        // Start MindAR (will prompt for camera permission)
+        await mindarComp.start();
+        // Hide the overlay once AR started successfully
         uiOverlay.style.display = 'none';
-
-        // give a small delay to ensure video feed is ready
-        setTimeout(() => {
-          arScene.components['mindar-image'].start();
-          showStatus('AR started — point camera at target.');
-        }, 500);
-
+        setStatus('AR running — point camera at the printed target image.');
       } catch (err) {
-        console.error(err);
-        showStatus('Error accessing camera: ' + err.message, true);
+        console.error('Error starting MindAR:', err);
+        if (err && err.name === 'NotAllowedError') {
+          setStatus('Camera permission denied. Please enable camera and reload the page.', true);
+        } else {
+          setStatus('Failed to start AR: ' + (err && err.message ? err.message : err), true);
+        }
+        showNotice('If you are using Cloudflare, ensure the subdomain is DNS-only (grey cloud). Proxied (orange) will break WebRTC/AR.');
+      }
+    });
+
+    // Optional: stop MindAR when user navigates away
+    window.addEventListener('pagehide', () => {
+      const mc = arScene.components['mindar-image'];
+      if (mc && mc.active) {
+        try { mc.stop(); } catch(e){/*ignore*/ }
       }
     });
   </script>
