@@ -2,140 +2,200 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AR Enigma — Business Card</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enigma AR Business Card</title>
 
-  <!-- A-Frame (1.2.0 chosen for mobile stability) -->
+  <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <!-- MindAR A-Frame integration -->
   <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    :root { --bg:#0d1117; --card:#161b22; --accent:#0ea5ff; color-scheme: dark; }
-    html,body { height:100%; margin:0; background:var(--bg); font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-    /* Ensure the A-Frame canvas fills the screen */
-    a-scene, canvas, .a-canvas { width:100% !important; height:100% !important; position:fixed; left:0; top:0; }
+    /* Base Styles (inspired by Enigma website) */
+    body, html { margin: 0; padding: 0; overflow: hidden; background: #0d1117; color: #e6eef8; font-family: 'Inter', sans-serif; }
+    a { color: #0ea5ff; text-decoration: none; }
 
-    /* Overlay UI */
-    .ui-overlay {
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999;
-      pointer-events:none;
+    /* Ensure AR canvas covers entire screen */
+    a-scene, canvas, .a-canvas { position: fixed; top:0; left:0; width:100%; height:100%; }
+
+    /* Overlay container (hidden by default) */
+    #uiOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
     }
-    .panel {
-      width:min(420px,92%); background:var(--card); padding:22px; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,0.6);
-      text-align:center; color:#e6eef8; pointer-events:auto;
+
+    #uiOverlay.visible {
+      opacity: 1;
+      pointer-events: all;
     }
-    .start-btn {
-      width:100%; padding:12px 14px; border-radius:10px; border:0; font-weight:600; font-size:16px;
-      background:var(--accent); color:#022; cursor:pointer;
+
+    .card {
+      background: #161b22;
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 360px;
+      width: 90%;
+      box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
+      text-align: center;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: transform 0.6s ease, opacity 0.6s ease;
     }
-    .muted { color:#9aa6b2; font-size:14px; margin-bottom:8px; }
-    .status { margin-top:12px; font-size:13px; color:#cde; min-height:20px; }
-    .notice { margin-top:8px; font-size:12px; color:#fbb; }
-    .small { font-size:12px; color:#9aa6b2; margin-top:10px; text-align:left; }
+
+    .card.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .card h1 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+
+    .card .btn {
+      display: inline-block;
+      padding: 12px 20px;
+      background: #0ea5ff;
+      color: #022;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .close-btn {
+      display: block;
+      margin-top: 14px;
+      color: #0ea5ff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* YouTube video overlay */
+    #videoOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    #videoOverlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    #videoOverlay iframe {
+      width: 90%;
+      max-width: 420px;
+      aspect-ratio: 16/9;
+      border: none;
+    }
+
+    #videoOverlay .video-close {
+      margin-top: 12px;
+      color: #0ea5ff;
+      cursor: pointer;
+      font-size: 16px;
+    }
   </style>
 </head>
-<body>
-  <!-- A-Frame + MindAR Scene -->
-  <a-scene id="arScene"
-           mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; showStats: false;"
-           embedded
-           color-space="sRGB"
-           renderer="colorManagement: true, physicallyCorrectLights: true"
-           vr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: false"
-  >
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Target 0: simple rotating red box -->
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-box color="#FF5252" depth="0.28" height="0.28" width="0.28" position="0 0 0.14"
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
-      </a-box>
+<body>
+  <!-- AR Scene -->
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; showStats: false"
+    embedded
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+  >
+    <a-camera position="0 0 0"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0" id="arTarget">
+      <!-- Invisible plane as interaction / trigger area -->
+      <a-plane position="0 0 0" width="1" height="0.6" material="opacity: 0"></a-plane>
     </a-entity>
   </a-scene>
 
-  <!-- Overlay UI -->
-  <div class="ui-overlay" id="uiOverlay">
-    <div class="panel" id="panel">
-      <h2 style="margin:0 0 8px 0">Enigma AR — Business Card</h2>
-      <div class="muted">Tap Start to allow camera access and begin image tracking.</div>
-
-      <button id="startBtn" class="start-btn">Start AR Experience</button>
-      <div class="status" id="status">Waiting to start...</div>
-      <div class="notice" id="notice" style="display:none"></div>
-
-      <div class="small">
-        Hosting notes:
-        <ul style="margin:8px 0 0 16px; padding:0;">
-          <li>Must be served over <strong>HTTPS</strong> (or <code>localhost</code> for testing).</li>
-          <li>On Cloudflare, the subdomain must be <strong>DNS only (grey cloud)</strong>.</li>
-          <li>Place <code>targets.mind</code> in same folder as this <code>index.html</code>.</li>
-        </ul>
-      </div>
+  <!-- UI Overlay (shows when target detected) -->
+  <div id="uiOverlay">
+    <div class="card" id="cardUI">
+      <h1>Enigma AR Card</h1>
+      <p>Your digital business card. Tap below to watch our intro video.</p>
+      <button class="btn" id="playVideoBtn">▶ Watch Video</button>
+      <div class="close-btn" id="closeOverlay">✕ Close</div>
     </div>
   </div>
 
+  <!-- YouTube Video Overlay -->
+  <div id="videoOverlay">
+    <iframe id="ytFrame" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <div class="video-close" id="closeVideo">Close Video</div>
+  </div>
+
   <script>
-    const startBtn = document.getElementById('startBtn');
-    const status = document.getElementById('status');
-    const notice = document.getElementById('notice');
     const uiOverlay = document.getElementById('uiOverlay');
-    const arScene = document.getElementById('arScene');
+    const cardUI = document.getElementById('cardUI');
+    const playVideoBtn = document.getElementById('playVideoBtn');
+    const closeOverlay = document.getElementById('closeOverlay');
+    const videoOverlay = document.getElementById('videoOverlay');
+    const ytFrame = document.getElementById('ytFrame');
+    const closeVideo = document.getElementById('closeVideo');
 
-    function setStatus(text, isError = false) {
-      status.innerText = text;
-      status.style.color = isError ? '#ff8080' : '#bfefff';
-    }
+    // When AR target is found — show overlay
+    const sceneEl = document.querySelector('a-scene');
+    const targetEntity = document.getElementById('arTarget');
 
-    function showNotice(text) {
-      notice.style.display = 'block';
-      notice.innerText = text;
-    }
-
-    // Quick environment checks
-    const isSecure = (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
-    if (!isSecure) {
-      showNotice('Warning: This page is not served over HTTPS. Camera permission may be blocked. Test locally via http://localhost or host via HTTPS.');
-    }
-
-    // Wait for the A-Frame scene to load and mindar component to attach
-    arScene.addEventListener('loaded', () => {
-      setStatus('AR libraries loaded. Ready.');
+    targetEntity.addEventListener('targetFound', () => {
+      uiOverlay.classList.add('visible');
+      // small delay for animation
+      setTimeout(() => cardUI.classList.add('visible'), 50);
     });
 
-    startBtn.addEventListener('click', async () => {
-      setStatus('Requesting camera permission...');
-      try {
-        // Trigger MindAR start (this will initiate camera permission flow)
-        const mindarComp = arScene.components['mindar-image'];
-        if (!mindarComp) {
-          setStatus('MindAR component not ready yet. Please wait a moment and tap Start again.', true);
-          return;
-        }
-
-        // Start MindAR (will prompt for camera permission)
-        await mindarComp.start();
-        // Hide the overlay once AR started successfully
-        uiOverlay.style.display = 'none';
-        setStatus('AR running — point camera at the printed target image.');
-      } catch (err) {
-        console.error('Error starting MindAR:', err);
-        if (err && err.name === 'NotAllowedError') {
-          setStatus('Camera permission denied. Please enable camera and reload the page.', true);
-        } else {
-          setStatus('Failed to start AR: ' + (err && err.message ? err.message : err), true);
-        }
-        showNotice('If you are using Cloudflare, ensure the subdomain is DNS-only (grey cloud). Proxied (orange) will break WebRTC/AR.');
-      }
+    // When target is lost — hide overlay
+    targetEntity.addEventListener('targetLost', () => {
+      cardUI.classList.remove('visible');
+      setTimeout(() => uiOverlay.classList.remove('visible'), 300);
     });
 
-    // Optional: stop MindAR when user navigates away
-    window.addEventListener('pagehide', () => {
-      const mc = arScene.components['mindar-image'];
-      if (mc && mc.active) {
-        try { mc.stop(); } catch(e){/*ignore*/ }
-      }
+    // Play video
+    playVideoBtn.addEventListener('click', () => {
+      ytFrame.src = "https://www.youtube.com/embed/eVli-tstM5E?autoplay=1&rel=0";
+      videoOverlay.classList.add('visible');
+    });
+
+    // Close overlay
+    closeOverlay.addEventListener('click', () => {
+      cardUI.classList.remove('visible');
+      setTimeout(() => uiOverlay.classList.remove('visible'), 300);
+    });
+
+    // Close video overlay
+    closeVideo.addEventListener('click', () => {
+      videoOverlay.classList.remove('visible');
+      ytFrame.src = "";
     });
   </script>
 </body>
