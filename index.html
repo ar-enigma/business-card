@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Enigma AR Experience - DIAGNOSTIC MODE</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Enigma AR Experience</title>
 
   <!-- Tailwind for quick styling -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- A-Frame and MindAR (deferred to avoid blocking) -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" defer></script>
+  <!-- CRITICAL FIX: Load A-Frame and MindAR SYNCHRONOUSLY (without 'defer') -->
+  <!-- This prevents race conditions on some mobile browsers. -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    /* ... (CSS remains the same as the final robust version) ... */
     html,body {
       height:100%;
       margin:0;
@@ -21,6 +21,7 @@
       font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
+      overflow: hidden; /* Prevent body scrolling */
     }
 
     a-scene, #ar-root {
@@ -36,40 +37,42 @@
       top:50%;
       transform:translate(-50%,-50%);
       z-index:9999;
-      background:rgba(17,24,39,0.88);
+      background:rgba(17,24,39,0.95); /* Slightly darker background */
       color:#fff;
-      padding:1.25rem;
+      padding:1.5rem;
       border-radius:12px;
       text-align:center;
       pointer-events:auto;
-      box-shadow:0 10px 30px rgba(2,6,23,0.6);
+      box-shadow:0 15px 40px rgba(0,0,0,0.8);
       transition:opacity .35s ease, transform .25s ease;
       max-width:90%;
+      border: 1px solid rgba(55, 65, 81, 0.5);
     }
 
     #start-btn {
-      margin-top:0.75rem;
+      margin-top:1rem;
       display:inline-block;
       background:linear-gradient(90deg,#06b6d4,#3b82f6);
       color:#fff;
-      padding:.5rem 1rem;
-      border-radius:8px;
+      padding:.6rem 1.5rem;
+      border-radius:10px;
       border:0;
-      font-weight:600;
+      font-weight:700;
       font-size:1rem;
       cursor: pointer;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    #start-btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.6);
     }
 
     #status {
-      margin-top:0.5rem;
+      margin-top:0.75rem;
       font-size:.9rem;
-      color:#d1d5db;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .spin-animation {
-        animation: none !important;
-      }
+      color:#9ca3af;
     }
 
     .hidden { display:none !important; }
@@ -80,7 +83,7 @@
     <a-scene
       embedded
       mindar-image="autoStart: false; 
-        imageTargetSrc: https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/examples/image-tracking/assets/card-example/card.mind; 
+        imageTargetSrc: targets.mind; 
         filterMinCF: 0.0001; filterBeta: 10000;"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
@@ -90,10 +93,9 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Example AR Content: A spinning, semi-transparent red cube -->
+        <!-- The AR content: A spinning, semi-transparent red cube -->
         <a-box
           id="cube"
-          class="spin-animation"
           position="0 0 0.5"
           rotation="0 0 0"
           scale="0.3 0.3 0.3"
@@ -114,12 +116,12 @@
 
   <!-- Instructions & controls -->
   <div id="ar-instructions" role="region" aria-live="polite" aria-atomic="true">
-    <div style="font-weight:700; font-size:1.125rem">AR Experience Ready (TEST MODE)</div>
-    <div style="margin-top:.25rem; color:#d1d5db">Tap "Start AR" to test camera access.</div>
+    <div style="font-weight:800; font-size:1.25rem; color: #3b82f6;">ENIGMA AR LAUNCHER</div>
+    <div style="margin-top:.5rem; color:#d1d5db; font-size:1rem;">Tap "Start AR" to activate your camera for image tracking.</div>
 
-    <button id="start-btn" aria-label="Start augmented reality">Start AR</button>
-    <div id="status" aria-hidden="false">Tap "Start AR" to begin — camera permission will be requested.</div>
-    <div id="error" class="hidden" role="alert" style="color:#ffb4b4; margin-top:.5rem;"></div>
+    <button id="start-btn" aria-label="Start augmented reality">START AR EXPERIENCE</button>
+    <div id="status" aria-hidden="false">Awaiting user tap...</div>
+    <div id="error" class="hidden" role="alert" style="color:#f87171; margin-top:.5rem; font-weight:600;"></div>
   </div>
 
   <script>
@@ -137,37 +139,59 @@
 
       function init() {
         scene = document.querySelector('a-scene');
-        mindarComponent = scene ? scene.components['mindar-image'] : null;
-
-        if (!mindarComponent) {
+        // A-Frame components register themselves after the script loads.
+        // We ensure it's ready before trying to access it.
+        if (scene) {
+            // Check if MindAR component is present in the scene
+            scene.addEventListener('loaded', () => {
+                mindarComponent = scene.components['mindar-image'];
+                if (!mindarComponent) {
+                    errorEl.classList.remove('hidden');
+                    errorEl.textContent = 'ERROR: MindAR library failed to load its components.';
+                    log('MindAR component missing after scene loaded.');
+                } else {
+                    log('MindAR component is ready to receive commands.');
+                }
+            }, { once: true });
+        } else {
             errorEl.classList.remove('hidden');
-            errorEl.textContent = 'AR library failed to load. Check network connection.';
-            console.error('MindAR component missing after window load.');
+            errorEl.textContent = 'FATAL: A-Frame scene not found.';
+            console.error('A-Frame scene missing.');
             return;
         }
 
         // --- Event Listeners for MindAR State ---
         scene.addEventListener('arReady', () => {
-            log('MindAR is ready. Should now prompt camera.');
-            instructions.style.opacity = '0.85';
+            log('MindAR is ready. Camera should be active.');
+            // Status update after success
+            status.textContent = 'Camera Active. Find the target image!';
+            // Reduce opacity of instructions slightly, but keep visible until target found
+            instructions.style.opacity = '0.9';
         });
         
         scene.addEventListener('arError', (event) => {
+          // This captures the core failure: binary loading, WebGL, or camera init failure
           console.error('[MINDAR AR ERROR]', event);
           errorEl.classList.remove('hidden');
-          errorEl.textContent = 'AR Failed to Start. (Check console for network failure)';
+          errorEl.textContent = 'AR Failed to initialize. Check console for details.';
           status.textContent = 'Initialization Failed';
+          startBtn.disabled = false; // Re-enable button
+          startBtn.textContent = 'RETRY START';
         });
 
         const targetEntity = document.querySelector('a-entity[mindar-image-target]');
         if (targetEntity) {
             targetEntity.addEventListener('targetFound', () => {
                 log('targetFound');
-                instructions.style.opacity = '0';
+                // Hide instructions completely when the target is found
+                instructions.style.opacity = '0'; 
+                instructions.style.pointerEvents = 'none';
             });
             targetEntity.addEventListener('targetLost', () => {
                 log('targetLost');
-                instructions.style.opacity = '1';
+                // Show instructions slightly when the target is lost
+                instructions.style.opacity = '0.9';
+                instructions.style.pointerEvents = 'auto';
             });
         }
         // --- END Event Listeners ---
@@ -175,38 +199,40 @@
 
         // --- Button Click Handler ---
         startBtn.addEventListener('click', async () => {
+          if (!mindarComponent) {
+            errorEl.textContent = 'System is not fully ready. Please wait a moment.';
+            return;
+          }
+
           errorEl.classList.add('hidden');
-          status.textContent = 'Requesting camera permission…';
+          startBtn.disabled = true;
+          status.textContent = 'Loading AR engine and requesting camera...';
 
           try {
-            // iOS 13+ motion permission check
-            if (typeof DeviceOrientationEvent !== 'undefined' &&
-                typeof DeviceOrientationEvent.requestPermission === 'function') {
-              try {
-                await DeviceOrientationEvent.requestPermission();
-              } catch (e) {
-                log('DeviceOrientation permission request dismissed.');
-              }
-            }
-
             // Start MindAR - THIS is where the camera prompt is triggered internally
             await mindarComponent.start();
-            status.textContent = 'AR started — point your camera at the card.';
+            log('MindAR start command sent.');
+            instructions.style.opacity = '1';
+            startBtn.textContent = 'RUNNING...';
             startBtn.blur();
 
           } catch (err) {
+            // Fallback error catcher
             console.error('AR START ERROR:', err);
             errorEl.classList.remove('hidden');
-            errorEl.textContent = 'Could not start AR. Camera permission denied or device not supported.';
-            status.textContent = 'Start failed';
+            errorEl.textContent = 'Could not start AR. Camera permission was likely denied.';
+            status.textContent = 'Start failed - Permission or Device issue.';
+            startBtn.disabled = false;
+            startBtn.textContent = 'RETRY START';
           }
         });
         // --- END Button Click Handler ---
       }
 
+      // We still wait for the window load to ensure all DOM elements are present, 
+      // but the scripts (A-Frame, MindAR) themselves load synchronously via the head tags.
       window.addEventListener('load', init, { once: true });
     })();
   </script>
 </body>
 </html>
-
