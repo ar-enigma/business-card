@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Enigma AR Experience</title>
+  <title>Enigma AR Experience - DIAGNOSTIC MODE</title>
 
   <!-- Tailwind for quick styling -->
   <script src="https://cdn.tailwindcss.com" defer></script>
@@ -13,6 +13,7 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" defer></script>
 
   <style>
+    /* ... (CSS remains the same as the final robust version) ... */
     html,body {
       height:100%;
       margin:0;
@@ -22,7 +23,6 @@
       -moz-osx-font-smoothing:grayscale;
     }
 
-    /* Safe area and full-screen scene */
     a-scene, #ar-root {
       width:100%;
       height:100%;
@@ -30,19 +30,18 @@
       inset:0;
     }
 
-    /* Instruction box */
     #ar-instructions {
       position:fixed;
       left:50%;
       top:50%;
       transform:translate(-50%,-50%);
-      z-index:9999; /* Increased Z-index for guaranteed clickability */
-      background:rgba(17,24,39,0.88); /* dark bg */
+      z-index:9999;
+      background:rgba(17,24,39,0.88);
       color:#fff;
       padding:1.25rem;
       border-radius:12px;
       text-align:center;
-      pointer-events:auto; /* allow taps */
+      pointer-events:auto;
       box-shadow:0 10px 30px rgba(2,6,23,0.6);
       transition:opacity .35s ease, transform .25s ease;
       max-width:90%;
@@ -67,14 +66,12 @@
       color:#d1d5db;
     }
 
-    /* Respect reduced motion preferences */
     @media (prefers-reduced-motion: reduce) {
       .spin-animation {
         animation: none !important;
       }
     }
 
-    /* Hidden utility */
     .hidden { display:none !important; }
   </style>
 </head>
@@ -82,7 +79,9 @@
   <div id="ar-root">
     <a-scene
       embedded
-      mindar-image="autoStart: false; imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 10000;"
+      mindar-image="autoStart: false; 
+        imageTargetSrc: https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/examples/image-tracking/assets/card-example/card.mind; 
+        filterMinCF: 0.0001; filterBeta: 10000;"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
       color-space="sRGB"
@@ -115,8 +114,8 @@
 
   <!-- Instructions & controls -->
   <div id="ar-instructions" role="region" aria-live="polite" aria-atomic="true">
-    <div style="font-weight:700; font-size:1.125rem">AR Experience Ready</div>
-    <div style="margin-top:.25rem; color:#d1d5db">Point your camera at the Enigma business card when ready.</div>
+    <div style="font-weight:700; font-size:1.125rem">AR Experience Ready (TEST MODE)</div>
+    <div style="margin-top:.25rem; color:#d1d5db">Tap "Start AR" to test camera access.</div>
 
     <button id="start-btn" aria-label="Start augmented reality">Start AR</button>
     <div id="status" aria-hidden="false">Tap "Start AR" to begin — camera permission will be requested.</div>
@@ -137,7 +136,6 @@
       }
 
       function init() {
-        // Try to get the scene and MindAR component now that all scripts are loaded.
         scene = document.querySelector('a-scene');
         mindarComponent = scene ? scene.components['mindar-image'] : null;
 
@@ -148,30 +146,28 @@
             return;
         }
 
-
         // --- Event Listeners for MindAR State ---
         scene.addEventListener('arReady', () => {
-            log('MindAR is ready.');
+            log('MindAR is ready. Should now prompt camera.');
             instructions.style.opacity = '0.85';
         });
         
         scene.addEventListener('arError', (event) => {
           console.error('[MINDAR AR ERROR]', event);
           errorEl.classList.remove('hidden');
-          errorEl.textContent = 'AR Failed to Start (Check targets.mind file).';
+          errorEl.textContent = 'AR Failed to Start. (Check console for network failure)';
           status.textContent = 'Initialization Failed';
         });
-
 
         const targetEntity = document.querySelector('a-entity[mindar-image-target]');
         if (targetEntity) {
             targetEntity.addEventListener('targetFound', () => {
                 log('targetFound');
-                instructions.style.opacity = '0'; // Hide on successful tracking
+                instructions.style.opacity = '0';
             });
             targetEntity.addEventListener('targetLost', () => {
                 log('targetLost');
-                instructions.style.opacity = '1'; // Show on tracking loss
+                instructions.style.opacity = '1';
             });
         }
         // --- END Event Listeners ---
@@ -193,10 +189,10 @@
               }
             }
 
-            // Start MindAR
+            // Start MindAR - THIS is where the camera prompt is triggered internally
             await mindarComponent.start();
             status.textContent = 'AR started — point your camera at the card.';
-            startBtn.blur(); // Remove focus
+            startBtn.blur();
 
           } catch (err) {
             console.error('AR START ERROR:', err);
@@ -208,7 +204,6 @@
         // --- END Button Click Handler ---
       }
 
-      // 🚨 CRITICAL FIX: Initialize after the full window and all deferred scripts are loaded
       window.addEventListener('load', init, { once: true });
     })();
   </script>
