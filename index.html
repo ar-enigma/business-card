@@ -6,6 +6,10 @@
     <title>Enigma AR Experience (Three.js)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- *** 1. CRITICAL SERVICE WORKER REGISTRATION *** -->
+    <!-- This must load FIRST to ensure COOP/COEP headers are applied by the worker -->
+    <script src="./coop-sw.js"></script>
+
     <style>
         /* Mobile-first styling */
         body {
@@ -70,7 +74,7 @@
         </button>
 
         <div id="statusMessage" class="success-box mt-4">
-            <p id="errorText" class="font-mono text-xs">Awaiting script load...</p>
+            <p id="errorText" class="font-mono text-xs">Waiting for Service Worker registration...</p>
         </div>
     </div>
     
@@ -78,9 +82,10 @@
     <canvas id="arCanvas"></canvas>
 
     <script type="module">
-        // 1. IMPORT NECESSARY FILES (Must be self-hosted!)
-        import * as THREE from './three.module.js'; // MUST match the downloaded file name
-        import { MindARThree } from './mindar-three.js'; // MUST match the downloaded file name
+        // 2. AR MODULE IMPORTS (Self-hosted files must be present!)
+        // Files: three.module.js, mindar-three.js (or mindar-image-three.prod.js)
+        import * as THREE from './three.module.js'; 
+        import { MindARThree } from './mindar-three.js'; 
 
         const startButton = document.getElementById('startButton');
         const arCanvas = document.getElementById('arCanvas');
@@ -100,7 +105,7 @@
             statusMessage.classList.add('success-box');
             errorText.innerText = message;
         }
-
+        
         // --- Core AR Initialization Function ---
         const initializeAR = async () => {
             // Hide startup UI and show canvas
@@ -159,8 +164,8 @@
                 arCanvas.style.display = 'none';
                 startButton.style.display = 'block';
 
-                if (error.name === 'NotAllowedError') {
-                    showError("Start Failed: Camera blocked by browser security (NotAllowedError). FINAL SOLUTION REQUIRED: GitHub Pages requires a hosting provider that supports setting COOP/COEP headers (e.g., Netlify/Vercel).");
+                if (error.name === 'NotAllowedError' || error.message.includes('WebAssembly')) {
+                    showError("Start Failed: Camera blocked by browser security (COOP/COEP required). Please ensure your browser reloaded automatically to activate the Service Worker.");
                 } else if (error.name === 'NotFoundError') {
                     showError("Start Failed: Camera not found on this device.");
                 } else {
@@ -171,13 +176,13 @@
 
         startButton.addEventListener('click', initializeAR);
         
-        // Initial check to confirm modules are loaded
+        // Initial check to confirm modules are loaded after service worker runs
         window.addEventListener('load', () => {
             if (typeof THREE === 'undefined' || typeof MindARThree === 'undefined') {
-                 showError("CRITICAL: Self-hosted modules failed to load. Check console for file not found errors for 'three.module.js' or 'mindar-three.js'.");
-                 startButton.style.display = 'none';
+                // This state is expected until the page reloads after the service worker registers
+                errorText.innerText = "Waiting for Service Worker registration and page reload...";
             } else {
-                 showSuccess("All required modules loaded locally. Ready for AR start.");
+                showSuccess("All required modules loaded. Ready to start.");
             }
         });
 
