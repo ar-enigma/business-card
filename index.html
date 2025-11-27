@@ -1,207 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enigma AR Experience (A-Frame)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- A-Frame and MindAR Scripts from CDN -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- Use the mindar-image-aframe.prod.js but we will bypass its video handler -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enigma AR Experience (Fixed)</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
 
-    <style>
-        /* Mobile-first styling */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0d1117;
-            margin: 0;
-            color: white;
-            overflow: hidden; 
-        }
-        .ui-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100; 
-            pointer-events: none; 
-        }
-        .container {
-            max-width: 400px;
-            width: 90%;
-            padding: 30px;
-            background-color: #161b22;
-            border-radius: 12px;
-            box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
-            text-align: center;
-            pointer-events: auto; 
-        }
-        .start-button {
-            pointer-events: auto; 
-        }
-        /* Crucial: Ensure the A-Frame canvas covers the entire viewport */
-        .a-canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-    </style>
+  <style>
+    body { margin: 0; font-family: 'Inter', sans-serif; background-color: #0d1117; color: white; overflow: hidden; }
+    .ui-overlay { position: fixed; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:100; pointer-events:none; }
+    .container { max-width:400px; width:90%; padding:30px; background:#161b22; border-radius:12px; box-shadow:0 4px 60px rgba(0,200,255,0.2); text-align:center; pointer-events:auto; }
+    .start-button { width:100%; padding:12px; background:#006aff; color:white; border:none; border-radius:8px; font-size:1rem; }
+  </style>
 </head>
 <body>
-    
-    <!-- The Video Element that will hold the camera stream -->
-    <video id="cameraVideo" playsinline style="display: none;"></video>
+  <!-- Hidden Video -->
+  <video id="cameraVideo" playsinline style="display:none;"></video>
 
-    <!-- 1. The AR Scene (Hidden initially) -->
-    <a-scene 
-        id="arScene"
-        mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; autoStart: false; showStats: false;" 
-        embedded 
-        renderer="colorManagement: true, physicallyCorrectLights: true" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false"
-        style="display: none; width: 100vw; height: 100vh;"
-    >
-        <!-- Camera Setup -->
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <!-- AR Scene -->
+  <a-scene id="arScene"
+           mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; "
+           embedded
+           color-space="sRGB"
+           renderer="colorManagement: true, physicallyCorrectLights: true"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false"
+           style="display: none; width:100vw; height:100vh;"
+  >
+    <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-box color="#FF0000" height="0.3" width="0.3" depth="0.3"
+             position="0 0 0.15"
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
+      ></a-box>
+    </a-entity>
+  </a-scene>
 
-        <!-- AR Content for Target 0 -->
-        <a-entity mindar-image-target="targetIndex: 0">
-            <!-- Red Cube Content -->
-            <a-box 
-                color="#FF0000" 
-                height="0.3" 
-                width="0.3" 
-                depth="0.3" 
-                position="0 0 0.15" 
-                rotation="0 0 0"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
-            ></a-box>
-        </a-entity>
-    </a-scene>
-
-    <!-- 2. The Startup UI Overlay -->
-    <div class="ui-overlay" id="uiOverlay">
-        <div class="container">
-            <h1 class="text-2xl font-bold mb-4">Enigma AR Experience</h1>
-            <p class="text-sm text-gray-400 mb-6">Tap Start to activate your camera for image tracking.</p>
-
-            <button id="startButton" 
-                    class="start-button w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition duration-150 ease-in-out">
-                Start AR Experience
-            </button>
-
-            <div id="statusMessage" class="mt-4 p-3 rounded-lg text-sm bg-green-900 border border-green-700">
-                <p id="errorText">Waiting for user input...</p>
-            </div>
-        </div>
+  <!-- UI Overlay -->
+  <div class="ui-overlay" id="uiOverlay">
+    <div class="container">
+      <h1 style="font-size: 24px; margin-bottom:16px;">Enigma AR Experience</h1>
+      <p style="margin-bottom:24px; color:#ccc;">Tap Start to activate camera for image tracking.</p>
+      <button id="startButton" class="start-button">Start AR Experience</button>
+      <div id="statusMessage" style="margin-top: 20px; color:#0f0;"></div>
     </div>
-    
-    <script>
-        const startButton = document.getElementById('startButton');
-        const uiOverlay = document.getElementById('uiOverlay');
-        const arScene = document.getElementById('arScene');
-        const errorText = document.getElementById('errorText');
-        const statusMessage = document.getElementById('statusMessage');
-        const cameraVideo = document.getElementById('cameraVideo');
-        
-        // This is necessary because some AR dependencies might not be ready on window load
-        let isAFrameReady = false;
+  </div>
 
-        AFRAME.registerComponent('ar-setup', {
-            init: function () {
-                isAFrameReady = true;
-                this.el.style.backgroundColor = 'transparent'; // Ensure the background is transparent
-                if (window.isWaitingForStart) {
-                    showSuccess("AR libraries loaded. Ready to start.");
-                }
-            }
-        });
-        // Add the new component to the scene to track readiness
-        arScene.setAttribute('ar-setup', '');
+  <script>
+    const startButton = document.getElementById('startButton');
+    const uiOverlay = document.getElementById('uiOverlay');
+    const arScene = document.getElementById('arScene');
+    const cameraVideo = document.getElementById('cameraVideo');
+    const statusMessage = document.getElementById('statusMessage');
 
+    const showStatus = (msg, isError = false) => {
+      statusMessage.style.color = isError ? '#f55' : '#0f0';
+      statusMessage.innerText = msg;
+    };
 
-        const showError = (message) => {
-            statusMessage.classList.remove('bg-green-900', 'border-green-700');
-            statusMessage.classList.add('bg-red-900', 'border-red-700');
-            errorText.innerText = message;
-            uiOverlay.style.display = 'flex';
-            arScene.style.display = 'none';
-        };
+    startButton.addEventListener('click', async () => {
+      showStatus('Requesting camera permission...');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraVideo.srcObject = stream;
+        cameraVideo.play();
 
-        const showSuccess = (message) => {
-            statusMessage.classList.remove('bg-red-900', 'border-red-700');
-            statusMessage.classList.add('bg-green-900', 'border-green-700');
-            errorText.innerText = message;
-        };
+        // show AR
+        arScene.style.display = 'block';
+        uiOverlay.style.display = 'none';
 
-        // *** CRITICAL CHANGE: New function to bind the camera feed directly to MindAR ***
-        const bindCameraToMindAR = (stream) => {
-            const mindarComponent = arScene.components['mindar-image'];
-            
-            // 1. Set the video source to the acquired stream
-            cameraVideo.srcObject = stream;
-            cameraVideo.onloadedmetadata = () => {
-                cameraVideo.play();
-                
-                // 2. Override MindAR's internal video element with our external one
-                mindarComponent.video = cameraVideo;
-                
-                // 3. Update the MindAR component properties to reflect the new video size
-                mindarComponent.data.videoWidth = cameraVideo.videoWidth;
-                mindarComponent.data.videoHeight = cameraVideo.videoHeight;
+        // give a small delay to ensure video feed is ready
+        setTimeout(() => {
+          arScene.components['mindar-image'].start();
+          showStatus('AR started — point camera at target.');
+        }, 500);
 
-                // 4. Start the AR scene
-                arScene.style.display = 'block';
-                uiOverlay.style.display = 'none';
-                mindarComponent.start();
-                showSuccess("AR running. Point the camera at your image target.");
-            };
-        };
-
-        const initializeAR = async () => {
-            if (!isAFrameReady) {
-                showError("A-Frame component not initialized. Please wait a moment and try again.");
-                return;
-            }
-            showSuccess("Requesting camera permission...");
-
-            try {
-                // 1. Manually request media stream
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-
-                showSuccess("Camera permission granted. Binding video stream...");
-                
-                // 2. Bind the camera stream directly to the A-Frame scene
-                bindCameraToMindAR(stream);
-
-            } catch (error) {
-                console.error("Camera Permission Error:", error);
-                if (error.name === 'NotAllowedError') {
-                    showError("Camera access denied. Please allow camera access in your browser settings.");
-                } else if (error.name === 'NotFoundError') {
-                    showError("No suitable camera found on this device.");
-                } else {
-                    showError(`Camera access failed: ${error.message}`);
-                }
-            }
-        };
-
-        startButton.addEventListener('click', initializeAR);
-
-        window.isWaitingForStart = true;
-        window.addEventListener('load', () => {
-            if (isAFrameReady) {
-                showSuccess("AR libraries loaded. Ready to start.");
-            }
-        });
-    </script>
+      } catch (err) {
+        console.error(err);
+        showStatus('Error accessing camera: ' + err.message, true);
+      }
+    });
+  </script>
 </body>
 </html>
