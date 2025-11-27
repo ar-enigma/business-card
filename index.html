@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enigma AR Launcher Test</title>
+    <title>Enigma AR Experience (Three.js)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 
-        *** IMPORTANT CHANGE HERE ***
-        Switched to unpkg.com CDN for MindAR to resolve the "failed to load" error.
-        This is a common fix when jsdelivr (used previously) is blocked by a network or firewall.
-    -->
-    <script src="https://unpkg.com/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
     <style>
-        /* Modern, mobile-first styling for the container */
+        /* Mobile-first styling */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #0d1117;
@@ -23,6 +18,7 @@
             margin: 0;
             color: white;
             padding: 20px;
+            overflow: hidden; /* Prevent scrolling when canvas is fullscreen */
         }
         .container {
             max-width: 400px;
@@ -32,6 +28,8 @@
             border-radius: 12px;
             box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
             text-align: center;
+            position: relative;
+            z-index: 10; /* Ensure UI is above the canvas if it loads */
         }
         .error-box {
             background-color: #330c0c;
@@ -49,82 +47,48 @@
             margin-top: 20px;
             font-size: 0.9rem;
         }
-        /* Hide the AR scene initially */
-        a-scene {
+        /* Canvas is hidden until AR starts */
+        #arCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             display: none; 
-            width: 100%; 
-            height: 400px;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="text-xl font-bold mb-4">MindAR Diagnostic Test</h1>
-        <p class="text-sm text-gray-400 mb-6">Checking camera access and AR library integrity.</p>
+    <div class="container" id="mainContainer">
+        <h1 class="text-xl font-bold mb-4">Enigma AR Experience</h1>
+        <p class="text-sm text-gray-400 mb-6">Tap Start to activate your camera for image tracking.</p>
 
         <button id="startButton" 
-                class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out">
+                class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition duration-150 ease-in-out">
             Start AR Experience
         </button>
 
-        <div id="statusMessage" class="error-box mt-4 hidden">
-            <p id="errorText" class="font-mono text-xs"></p>
+        <div id="statusMessage" class="success-box mt-4">
+            <p id="errorText" class="font-mono text-xs">Awaiting script load...</p>
         </div>
-        
-        <!-- The MindAR A-Frame scene, hidden until started -->
-        <!-- NOTE: targets.mind is still required in the same directory -->
-        <a-scene id="arScene" mindar-image="imageTargetSrc: targets.mind; filterMinCF:0.0001; filterBeta: 0.001; maxTrack: 2;" embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true" vr-mode-ui="enabled: false" device-orientation-permission-required="true">
-            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        </a-scene>
     </div>
+    
+    <!-- The canvas where Three.js will render the AR scene -->
+    <canvas id="arCanvas"></canvas>
 
-    <script>
+    <script type="module">
+        // 1. IMPORT NECESSARY FILES (Must be self-hosted!)
+        import * as THREE from './three.module.js'; // MUST match the downloaded file name
+        import { MindARThree } from './mindar-three.js'; // MUST match the downloaded file name
+
         const startButton = document.getElementById('startButton');
-        const arScene = document.getElementById('arScene');
+        const arCanvas = document.getElementById('arCanvas');
+        const mainContainer = document.getElementById('mainContainer');
         const statusMessage = document.getElementById('statusMessage');
         const errorText = document.getElementById('errorText');
-
-        const initializeAR = () => {
-            // First, try to remove the 'display: none' and append the scene to the DOM
-            arScene.style.display = 'block'; 
-            
-            // Perform a quick check to see if the MindAR library loaded after the button click
-            if (typeof MindAR === 'undefined' || typeof MindAR.Image === 'undefined') {
-                 showError("CRITICAL: MindAR library failed to load from CDN. This may be a network block. Check the console for CORS errors.");
-                 // Immediately hide the button if the library itself is missing
-                 startButton.style.display = 'none';
-                 return;
-            }
-
-            statusMessage.classList.remove('error-box');
-            statusMessage.classList.add('success-box');
-            showError("MindAR library loaded successfully. Attempting to request camera permission...");
-            
-            // Set up event listeners for the A-Frame component initialization
-            arScene.addEventListener('mindar-image-initialized', () => {
-                showSuccess("AR Initialized! Please point your camera at the target image.");
-            });
-
-            // Handle the camera access error
-            arScene.addEventListener('camera-error', (event) => {
-                let errorMessage = event.detail.error.name || "Unknown Error";
-                // This is the error code that typically means COOP/COEP headers are missing
-                if (errorMessage === 'NotAllowedError') {
-                    showError("Error: Camera Access Blocked (NotAllowedError). This is the Cross-Origin Isolation issue common on GitHub Pages. You must switch hosting (e.g., to Netlify) to set COOP/COEP headers.");
-                } else if (errorMessage === 'NotFoundError') {
-                    showError("Error: No camera or media device found on this device.");
-                } else {
-                    showError(`Camera failed to start: ${errorMessage}. Check browser settings.`);
-                }
-                console.error("Camera Error Details:", event.detail.error);
-                arScene.style.display = 'none'; // Hide scene on failure
-                startButton.style.display = 'block'; // Show button to retry
-            });
-
-            // Hide the button and let A-Frame/MindAR handle the process
-            startButton.style.display = 'none';
-        };
-
+        
+        // --- Utility Functions ---
         const showError = (message) => {
             statusMessage.classList.remove('hidden', 'success-box');
             statusMessage.classList.add('error-box');
@@ -137,12 +101,83 @@
             errorText.innerText = message;
         }
 
+        // --- Core AR Initialization Function ---
+        const initializeAR = async () => {
+            // Hide startup UI and show canvas
+            mainContainer.style.display = 'none';
+            document.body.style.backgroundColor = 'black';
+            arCanvas.style.display = 'block';
+
+            showSuccess("Starting AR Engine. Waiting for camera permission request...");
+
+            try {
+                // Initialize MindAR with the correct target image and canvas
+                const mindarThree = new MindARThree({
+                    container: arCanvas,
+                    imageTargetSrc: 'targets.mind', // Targets file in the root
+                    filterMinCF: 0.0001, 
+                    filterBeta: 0.001,
+                    maxTrack: 2
+                });
+                
+                const { renderer, scene, camera } = mindarThree;
+
+                // Create a 3D object to appear on the card (e.g., a simple red cube)
+                const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+                const material = new THREE.MeshPhongMaterial({ color: 0xFF0000 });
+                const cube = new THREE.Mesh(geometry, material);
+                
+                // Add ambient light for visibility
+                const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+                scene.add(light);
+
+                // Add the cube to the MindAR anchor
+                const anchor = mindarThree.addAnchor(0); // Anchor for the first image target
+                anchor.group.add(cube); 
+
+                // Start the AR tracking (This is where the camera prompt happens)
+                await mindarThree.start();
+
+                // Successful start
+                showSuccess("AR Activated! Point the camera at your Enigma business card.");
+
+                // Animation loop
+                renderer.setAnimationLoop(() => {
+                    renderer.render(scene, camera);
+                    // Rotate the cube slowly to confirm tracking is working
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                });
+
+            } catch (error) {
+                // Handle all errors, including the "NotAllowedError" (Cross-Origin Isolation)
+                console.error("MindAR Initialization Error:", error);
+                
+                // Show the start screen again with the error
+                document.body.style.backgroundColor = '#0d1117';
+                mainContainer.style.display = 'block';
+                arCanvas.style.display = 'none';
+                startButton.style.display = 'block';
+
+                if (error.name === 'NotAllowedError') {
+                    showError("Start Failed: Camera blocked by browser security (NotAllowedError). FINAL SOLUTION REQUIRED: GitHub Pages requires a hosting provider that supports setting COOP/COEP headers (e.g., Netlify/Vercel).");
+                } else if (error.name === 'NotFoundError') {
+                    showError("Start Failed: Camera not found on this device.");
+                } else {
+                    showError(`An unexpected error occurred: ${error.message}`);
+                }
+            }
+        };
+
         startButton.addEventListener('click', initializeAR);
         
+        // Initial check to confirm modules are loaded
         window.addEventListener('load', () => {
-            // Check if the script loaded immediately on page load
-            if (typeof MindAR === 'undefined' || typeof MindAR.Image === 'undefined') {
-                 showError("MindAR library failed to load immediately on page load. Network or firewall block suspected.");
+            if (typeof THREE === 'undefined' || typeof MindARThree === 'undefined') {
+                 showError("CRITICAL: Self-hosted modules failed to load. Check console for file not found errors for 'three.module.js' or 'mindar-three.js'.");
+                 startButton.style.display = 'none';
+            } else {
+                 showSuccess("All required modules loaded locally. Ready for AR start.");
             }
         });
 
