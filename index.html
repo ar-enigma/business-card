@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Enigma AR Business Card</title>
 
-  <!-- Optimized MindAR + A-Frame (Latest Stable Versions) -->
+  <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     body, html {
       margin: 0;
       padding: 0;
@@ -28,7 +29,6 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* AR canvas optimization */
     a-scene, canvas, .a-canvas {
       position: fixed !important;
       top: 0 !important;
@@ -38,7 +38,6 @@
       touch-action: none;
     }
 
-    /* Loading Screen */
     #loadingScreen {
       position: fixed;
       inset: 0;
@@ -65,9 +64,7 @@
       animation: spin 1s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-text {
       margin-top: 20px;
@@ -75,7 +72,6 @@
       font-size: 14px;
     }
 
-    /* Start Button */
     #startButton {
       position: fixed;
       inset: 0;
@@ -127,11 +123,8 @@
       box-shadow: 0 4px 20px rgba(14, 165, 255, 0.3);
     }
 
-    .btn-start:active {
-      transform: scale(0.95);
-    }
+    .btn-start:active { transform: scale(0.95); }
 
-    /* Instructions */
     #instructions {
       position: fixed;
       top: 20px;
@@ -150,11 +143,8 @@
       transition: opacity 0.3s ease;
     }
 
-    #instructions.visible {
-      opacity: 1;
-    }
+    #instructions.visible { opacity: 1; }
 
-    /* UI Overlay */
     #uiOverlay {
       position: fixed;
       inset: 0;
@@ -233,9 +223,7 @@
       box-shadow: 0 4px 12px rgba(14, 165, 255, 0.3);
     }
 
-    .btn:active {
-      transform: scale(0.95);
-    }
+    .btn:active { transform: scale(0.95); }
 
     .btn-secondary {
       background: transparent;
@@ -252,11 +240,8 @@
       transition: color 0.2s;
     }
 
-    .close-btn:hover {
-      color: #0ea5ff;
-    }
+    .close-btn:hover { color: #0ea5ff; }
 
-    /* Video Overlay */
     #videoOverlay {
       position: fixed;
       inset: 0;
@@ -298,11 +283,8 @@
       transition: all 0.2s;
     }
 
-    .video-close:active {
-      transform: scale(0.95);
-    }
+    .video-close:active { transform: scale(0.95); }
 
-    /* Error Message */
     #errorMessage {
       position: fixed;
       bottom: 20px;
@@ -320,9 +302,7 @@
       transition: opacity 0.3s ease;
     }
 
-    #errorMessage.visible {
-      opacity: 1;
-    }
+    #errorMessage.visible { opacity: 1; }
   </style>
 </head>
 
@@ -355,14 +335,13 @@
     mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; showStats: false; filterMinCF: 0.0001; filterBeta: 0.001;"
     embedded
     vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights: true, antialias: true, precision: medium"
   >
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0" id="arTarget">
-      <!-- Interaction trigger area -->
       <a-plane position="0 0 0" width="1" height="0.6" material="opacity: 0"></a-plane>
     </a-entity>
   </a-scene>
@@ -371,7 +350,7 @@
   <div id="uiOverlay">
     <div class="card">
       <h1>Enigma</h1>
-      <div class="subtitle">Digital Marketing & IT Solutions</div>
+      <div class="subtitle">Digital Marketing &amp; IT Solutions</div>
       <p>Transform your digital presence with cutting-edge AR technology and marketing solutions.</p>
       <div class="card-buttons">
         <button class="btn" id="playVideoBtn">▶ Watch Our Story</button>
@@ -388,10 +367,9 @@
   </div>
 
   <!-- Error Message -->
-  <div id="errorMessage" id="error"></div>
+  <div id="errorMessage"></div>
 
   <script>
-    // DOM Elements
     const loadingScreen = document.getElementById('loadingScreen');
     const startButton = document.getElementById('startButton');
     const startBtn = document.getElementById('startBtn');
@@ -408,7 +386,6 @@
     let arStarted = false;
     let targetFound = false;
 
-    // Show start button after loading
     window.addEventListener('load', () => {
       setTimeout(() => {
         loadingScreen.classList.add('hidden');
@@ -416,57 +393,34 @@
       }, 500);
     });
 
-    // Start AR Experience
+    // Start AR – MindAR handles camera for both iOS and Android
     startBtn.addEventListener('click', async () => {
       try {
         const sceneEl = document.querySelector('a-scene');
-        
-        // Request camera permissions first
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          try {
-            await navigator.mediaDevices.getUserMedia({ 
-              video: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              } 
-            });
-          } catch (err) {
-            showError('Camera access denied. Please allow camera permissions.');
-            return;
-          }
-        }
-
-        // Start MindAR
         const mindARSystem = sceneEl.systems['mindar-image-system'];
         await mindARSystem.start();
-        
+
         arStarted = true;
         startButton.classList.remove('visible');
-        
-        // Show instructions after a moment
+
         setTimeout(() => {
           instructions.classList.add('visible');
         }, 500);
-
       } catch (error) {
         console.error('AR Start Error:', error);
-        showError('Failed to start AR. Please refresh and try again.');
+        showError('Failed to start AR. Please check camera permissions in your browser settings and reload.');
       }
     });
 
-    // Target found/lost events
     const targetEntity = document.getElementById('arTarget');
-    
+
     targetEntity.addEventListener('targetFound', () => {
-      console.log('Target found');
       targetFound = true;
       instructions.classList.remove('visible');
       uiOverlay.classList.add('visible');
     });
 
     targetEntity.addEventListener('targetLost', () => {
-      console.log('Target lost');
       targetFound = false;
       if (uiOverlay.classList.contains('visible')) {
         uiOverlay.classList.remove('visible');
@@ -478,18 +432,15 @@
       }
     });
 
-    // Play video
     playVideoBtn.addEventListener('click', () => {
-      ytFrame.src = "https://www.youtube.com/embed/eVli-tstM5E?autoplay=1&rel=0";
+      ytFrame.src = 'https://www.youtube.com/embed/eVli-tstM5E?autoplay=1&rel=0';
       videoOverlay.classList.add('visible');
     });
 
-    // Contact button
     contactBtn.addEventListener('click', () => {
-      window.location.href = "https://enigmamarketing.pk/contact";
+      window.location.href = 'https://enigmamarketing.pk/contact';
     });
 
-    // Close overlay
     closeOverlay.addEventListener('click', () => {
       uiOverlay.classList.remove('visible');
       setTimeout(() => {
@@ -499,13 +450,11 @@
       }, 300);
     });
 
-    // Close video
     closeVideo.addEventListener('click', () => {
       videoOverlay.classList.remove('visible');
-      ytFrame.src = "";
+      ytFrame.src = '';
     });
 
-    // Error handler
     function showError(message) {
       errorMessage.textContent = message;
       errorMessage.classList.add('visible');
@@ -514,24 +463,18 @@
       }, 5000);
     }
 
-    // Handle visibility change (battery optimization)
     document.addEventListener('visibilitychange', () => {
+      const sceneEl = document.querySelector('a-scene');
+      const mindARSystem = sceneEl.systems['mindar-image-system'];
+      if (!mindARSystem) return;
+
       if (document.hidden && arStarted) {
-        const sceneEl = document.querySelector('a-scene');
-        const mindARSystem = sceneEl.systems['mindar-image-system'];
-        if (mindARSystem) {
-          mindARSystem.pause(true);
-        }
+        mindARSystem.pause(true);
       } else if (!document.hidden && arStarted) {
-        const sceneEl = document.querySelector('a-scene');
-        const mindARSystem = sceneEl.systems['mindar-image-system'];
-        if (mindARSystem) {
-          mindARSystem.unpause();
-        }
+        mindARSystem.unpause();
       }
     });
 
-    // Prevent zoom on double tap (iOS Safari)
     let lastTouchEnd = 0;
     document.addEventListener('touchend', (event) => {
       const now = Date.now();
