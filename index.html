@@ -6,10 +6,6 @@
     <title>Enigma AR Experience (Three.js)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- *** 1. CRITICAL SERVICE WORKER REGISTRATION *** -->
-    <!-- This must load FIRST to ensure COOP/COEP headers are applied by the worker -->
-    <script src="./coop-sw.js"></script>
-
     <style>
         /* Mobile-first styling */
         body {
@@ -22,7 +18,7 @@
             margin: 0;
             color: white;
             padding: 20px;
-            overflow: hidden; /* Prevent scrolling when canvas is fullscreen */
+            overflow: hidden; 
         }
         .container {
             max-width: 400px;
@@ -33,7 +29,7 @@
             box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
             text-align: center;
             position: relative;
-            z-index: 10; /* Ensure UI is above the canvas if it loads */
+            z-index: 10;
         }
         .error-box {
             background-color: #330c0c;
@@ -74,7 +70,7 @@
         </button>
 
         <div id="statusMessage" class="success-box mt-4">
-            <p id="errorText" class="font-mono text-xs">Waiting for Service Worker registration...</p>
+            <p id="errorText" class="font-mono text-xs">Awaiting AR script load...</p>
         </div>
     </div>
     
@@ -82,8 +78,7 @@
     <canvas id="arCanvas"></canvas>
 
     <script type="module">
-        // 2. AR MODULE IMPORTS (Self-hosted files must be present!)
-        // Files: three.module.js, mindar-three.js (or mindar-image-three.prod.js)
+        // AR MODULE IMPORTS (Self-hosted files)
         import * as THREE from './three.module.js'; 
         import { MindARThree } from './mindar-three.js'; 
 
@@ -116,10 +111,10 @@
             showSuccess("Starting AR Engine. Waiting for camera permission request...");
 
             try {
-                // Initialize MindAR with the correct target image and canvas
+                // Initialize MindAR
                 const mindarThree = new MindARThree({
                     container: arCanvas,
-                    imageTargetSrc: 'targets.mind', // Targets file in the root
+                    imageTargetSrc: 'targets.mind',
                     filterMinCF: 0.0001, 
                     filterBeta: 0.001,
                     maxTrack: 2
@@ -127,45 +122,43 @@
                 
                 const { renderer, scene, camera } = mindarThree;
 
-                // Create a 3D object to appear on the card (e.g., a simple red cube)
+                // Create a 3D object (red cube)
                 const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
                 const material = new THREE.MeshPhongMaterial({ color: 0xFF0000 });
                 const cube = new THREE.Mesh(geometry, material);
                 
-                // Add ambient light for visibility
+                // Lighting
                 const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
                 scene.add(light);
 
-                // Add the cube to the MindAR anchor
-                const anchor = mindarThree.addAnchor(0); // Anchor for the first image target
+                // Attach cube to the first anchor
+                const anchor = mindarThree.addAnchor(0); 
                 anchor.group.add(cube); 
 
-                // Start the AR tracking (This is where the camera prompt happens)
+                // Start AR tracking (Camera prompt happens here)
                 await mindarThree.start();
 
-                // Successful start
                 showSuccess("AR Activated! Point the camera at your Enigma business card.");
 
                 // Animation loop
                 renderer.setAnimationLoop(() => {
                     renderer.render(scene, camera);
-                    // Rotate the cube slowly to confirm tracking is working
                     cube.rotation.x += 0.01;
                     cube.rotation.y += 0.01;
                 });
 
             } catch (error) {
-                // Handle all errors, including the "NotAllowedError" (Cross-Origin Isolation)
                 console.error("MindAR Initialization Error:", error);
                 
                 // Show the start screen again with the error
                 document.body.style.backgroundColor = '#0d1117';
                 mainContainer.style.display = 'block';
                 arCanvas.style.display = 'none';
-                startButton.style.display = 'block';
 
                 if (error.name === 'NotAllowedError' || error.message.includes('WebAssembly')) {
-                    showError("Start Failed: Camera blocked by browser security (COOP/COEP required). Please ensure your browser reloaded automatically to activate the Service Worker.");
+                    // This is the Cross-Origin Isolation error we have been fighting. 
+                    // Netlify should prevent this, but if it still shows, it's a device issue.
+                    showError("CRITICAL: Camera blocked by browser security (COOP/COEP failed). Check console for details.");
                 } else if (error.name === 'NotFoundError') {
                     showError("Start Failed: Camera not found on this device.");
                 } else {
@@ -176,11 +169,10 @@
 
         startButton.addEventListener('click', initializeAR);
         
-        // Initial check to confirm modules are loaded after service worker runs
+        // Initial check to confirm modules are loaded
         window.addEventListener('load', () => {
             if (typeof THREE === 'undefined' || typeof MindARThree === 'undefined') {
-                // This state is expected until the page reloads after the service worker registers
-                errorText.innerText = "Waiting for Service Worker registration and page reload...";
+                showError("Module Loading Error: Check that 'three.module.js' and 'mindar-three.js' are correctly placed in the repository root.");
             } else {
                 showSuccess("All required modules loaded. Ready to start.");
             }
