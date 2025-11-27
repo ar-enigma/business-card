@@ -36,7 +36,7 @@
       left:50%;
       top:50%;
       transform:translate(-50%,-50%);
-      z-index:999;
+      z-index:9999; /* Increased Z-index for guaranteed clickability */
       background:rgba(17,24,39,0.88); /* dark bg */
       color:#fff;
       padding:1.25rem;
@@ -58,6 +58,7 @@
       border:0;
       font-weight:600;
       font-size:1rem;
+      cursor: pointer;
     }
 
     #status {
@@ -90,7 +91,7 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Replace or extend with your content -->
+        <!-- Example AR Content: A spinning, semi-transparent red cube -->
         <a-box
           id="cube"
           class="spin-animation"
@@ -124,114 +125,93 @@
 
   <script>
     (function () {
-      // Defer execution until A-Frame and MindAR are available
-      function waitForSceneReady() {
-        return new Promise((resolve) => {
-          const check = () => {
-            const scene = document.querySelector('a-scene');
-            if (scene && scene.hasLoaded) return resolve(scene);
-            if (scene) {
-              scene.addEventListener('loaded', () => resolve(scene), { once: true });
-            } else {
-              setTimeout(check, 50);
-            }
-          };
-          check();
-        });
-      }
+      const startBtn = document.getElementById('start-btn');
+      const status = document.getElementById('status');
+      const errorEl = document.getElementById('error');
+      const instructions = document.getElementById('ar-instructions');
+      let mindarComponent = null;
+      let scene = null;
 
       function log(msg) {
         console.debug('[ENIGMA AR]', msg);
       }
 
-      async function init() {
-        const startBtn = document.getElementById('start-btn');
-        const status = document.getElementById('status');
-        const errorEl = document.getElementById('error');
-        const instructions = document.getElementById('ar-instructions');
-
-        const scene = await waitForSceneReady();
-        const mindarComponent = scene.components && scene.components['mindar-image'];
+      function init() {
+        // Try to get the scene and MindAR component now that all scripts are loaded.
+        scene = document.querySelector('a-scene');
+        mindarComponent = scene ? scene.components['mindar-image'] : null;
 
         if (!mindarComponent) {
-          errorEl.classList.remove('hidden');
-          errorEl.textContent = 'MindAR component not found. Make sure the MindAR script loaded.';
-          console.error('MindAR component missing on a-scene.');
-          return;
+            errorEl.classList.remove('hidden');
+            errorEl.textContent = 'AR library failed to load. Check network connection.';
+            console.error('MindAR component missing after window load.');
+            return;
         }
 
-        // When AR is ready -> reduce instruction prominence
+
+        // --- Event Listeners for MindAR State ---
         scene.addEventListener('arReady', () => {
-          log('MindAR is ready.');
-          instructions.style.opacity = '0.85';
-        });
-        // Add MindAR's AR Error Handler
-        scene.addEventListener('arError', (event) => {
-          console.error('[MINDAR ERROR]', event);
-          errorEl.classList.remove('hidden');
-          errorEl.textContent = 'AR Failed to Start (Check targets.mind and console for errors).';
-          status.textContent = 'Initialization Failed';
+            log('MindAR is ready.');
+            instructions.style.opacity = '0.85';
         });
         
+        scene.addEventListener('arError', (event) => {
+          console.error('[MINDAR AR ERROR]', event);
+          errorEl.classList.remove('hidden');
+          errorEl.textContent = 'AR Failed to Start (Check targets.mind file).';
+          status.textContent = 'Initialization Failed';
+        });
+
 
         const targetEntity = document.querySelector('a-entity[mindar-image-target]');
-        targetEntity.addEventListener('targetFound', () => {
-          log('targetFound');
-          instructions.style.opacity = '0';
-        });
-        targetEntity.addEventListener('targetLost', () => {
-          log('targetLost');
-          instructions.style.opacity = '1';
-        });
+        if (targetEntity) {
+            targetEntity.addEventListener('targetFound', () => {
+                log('targetFound');
+                instructions.style.opacity = '0'; // Hide on successful tracking
+            });
+            targetEntity.addEventListener('targetLost', () => {
+                log('targetLost');
+                instructions.style.opacity = '1'; // Show on tracking loss
+            });
+        }
+        // --- END Event Listeners ---
 
-        // Try to start mindar after user gesture (some browsers require a user gesture for camera)
+
+        // --- Button Click Handler ---
         startBtn.addEventListener('click', async () => {
           errorEl.classList.add('hidden');
           status.textContent = 'Requesting camera permission…';
 
           try {
-            // If device-orientation-permission-ui is needed on iOS, prompt explicitly:
+            // iOS 13+ motion permission check
             if (typeof DeviceOrientationEvent !== 'undefined' &&
                 typeof DeviceOrientationEvent.requestPermission === 'function') {
-              // iOS 13+ requires explicit permission for motion/orientation events
               try {
-                const res = await DeviceOrientationEvent.requestPermission();
-                log('DeviceOrientation permission: ' + res);
+                await DeviceOrientationEvent.requestPermission();
               } catch (e) {
-                log('DeviceOrientation permission request failed or was dismissed.');
+                log('DeviceOrientation permission request dismissed.');
               }
             }
 
-            // Start MindAR via its component API
-            // The MindAR A-Frame integration exposes a start() and stop() on the scene's mindar-image component
-            if (mindarComponent.start) {
-              await mindarComponent.start();
-              status.textContent = 'AR started — point your camera at the card.';
-            } else {
-              // Fallback attempt: call play() on the scene as a fallback
-              if (scene.play) scene.play();
-              status.textContent = 'AR started.';
-            }
-
-            // remove focus from button to allow taps to pass through
-            startBtn.blur();
+            // Start MindAR
+            await mindarComponent.start();
+            status.textContent = 'AR started — point your camera at the card.';
+            startBtn.blur(); // Remove focus
 
           } catch (err) {
-            console.error(err);
+            console.error('AR START ERROR:', err);
             errorEl.classList.remove('hidden');
-            errorEl.textContent = 'Could not start AR — permission denied or camera unavailable.';
+            errorEl.textContent = 'Could not start AR. Camera permission denied or device not supported.';
             status.textContent = 'Start failed';
           }
         });
+        // --- END Button Click Handler ---
       }
 
-      // Initialize when scripts finished parsing
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(init, 50);
-      } else {
-        window.addEventListener('DOMContentLoaded', init, { once: true });
-      }
+      // 🚨 CRITICAL FIX: Initialize after the full window and all deferred scripts are loaded
+      window.addEventListener('load', init, { once: true });
     })();
   </script>
 </body>
 </html>
+
