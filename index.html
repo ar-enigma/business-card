@@ -28,8 +28,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 100; /* Ensure UI is on top */
-            pointer-events: none; /* Allows clicks to pass through to the AR scene */
+            z-index: 100; 
+            pointer-events: none; 
         }
         .container {
             max-width: 400px;
@@ -39,10 +39,10 @@
             border-radius: 12px;
             box-shadow: 0 4px 60px rgba(0, 200, 255, 0.2);
             text-align: center;
-            pointer-events: auto; /* Re-enable pointer events for the box */
+            pointer-events: auto; 
         }
         .start-button {
-            pointer-events: auto; /* Ensure button is clickable */
+            pointer-events: auto; 
         }
     </style>
 </head>
@@ -58,11 +58,6 @@
         device-orientation-permission-ui="enabled: false"
         style="display: none; width: 100vw; height: 100vh;"
     >
-        <!-- Assets for the 3D model (Placeholder Cube) -->
-        <a-assets>
-            <!-- No model needed for cube, but you would put your GLTF here -->
-        </a-assets>
-
         <!-- Camera Setup -->
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
@@ -93,7 +88,7 @@
             </button>
 
             <div id="statusMessage" class="mt-4 p-3 rounded-lg text-sm bg-green-900 border border-green-700">
-                <p id="errorText">Awaiting user input. Ready.</p>
+                <p id="errorText">All AR libraries loaded successfully from CDN. Ready to start.</p>
             </div>
         </div>
     </div>
@@ -109,6 +104,9 @@
             statusMessage.classList.remove('bg-green-900', 'border-green-700');
             statusMessage.classList.add('bg-red-900', 'border-red-700');
             errorText.innerText = message;
+            // Re-show the UI overlay if it was hidden
+            uiOverlay.style.display = 'flex';
+            arScene.style.display = 'none';
         };
 
         const showSuccess = (message) => {
@@ -117,38 +115,60 @@
             errorText.innerText = message;
         };
 
-        const initializeAR = () => {
-            showSuccess("Requesting camera access...");
-            
-            // 1. Hide the UI and show the AR Scene
+        const startARScene = () => {
+             // 1. Hide the UI and show the AR Scene
             uiOverlay.style.display = 'none';
             arScene.style.display = 'block';
 
-            // 2. Start the A-Frame Scene (This triggers camera permission)
-            // We use setTimeout to ensure the DOM has updated before starting the heavy AR process
+            // 2. Start the A-Frame Scene
             setTimeout(() => {
-                arScene.components['mindar-image'].start();
-                showSuccess("AR running. Point the camera at your image target.");
-            }, 500);
+                try {
+                    arScene.components['mindar-image'].start();
+                    showSuccess("AR running. Point the camera at your image target.");
+                } catch (e) {
+                    console.error("A-Frame MindAR Start Failed:", e);
+                    showError("CRITICAL: AR Engine failed after permission. Check console for COOP/COEP errors.");
+                }
+            }, 100);
+        };
 
 
-            // A-Frame/MindAR handles most errors internally, but we can listen for the critical 'arError' event
-            arScene.addEventListener('arError', (event) => {
-                uiOverlay.style.display = 'flex';
-                arScene.style.display = 'none';
-                console.error("AR Initialization Error:", event.detail.error);
-                showError("CRITICAL: Camera or AR initialization failed. Please check device permissions.");
-            });
+        const initializeAR = async () => {
+            showSuccess("Requesting camera permission...");
+
+            try {
+                // *** 1. Manually request media stream to force the permission dialog ***
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+
+                // Permission granted! Immediately stop the stream so A-Frame can take over
+                stream.getTracks().forEach(track => track.stop());
+                
+                showSuccess("Camera permission granted. Starting AR experience...");
+                
+                // *** 2. Proceed to start the A-Frame scene ***
+                startARScene();
+
+            } catch (error) {
+                console.error("Camera Permission Error:", error);
+                if (error.name === 'NotAllowedError') {
+                    showError("Camera access denied. Please allow camera access in your browser settings.");
+                } else if (error.name === 'NotFoundError') {
+                    showError("No suitable camera found on this device.");
+                } else {
+                    showError(`Camera access failed: ${error.message}`);
+                }
+            }
         };
 
         startButton.addEventListener('click', initializeAR);
 
-        // A-Frame loads dependencies asynchronously, so the page is 'Ready' when the DOM loads
         window.addEventListener('load', () => {
-             // Check if MindAR component loaded successfully
             if (!AFRAME.components['mindar-image']) {
                 showError("MindAR or A-Frame failed to load from CDN. Check network connection.");
             } else {
+                // Ensure the initial message is ready for the user to click
                 showSuccess("All AR libraries loaded successfully from CDN. Ready to start.");
             }
         });
