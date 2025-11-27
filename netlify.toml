@@ -1,0 +1,7 @@
+This file tells Netlify to add the security headers needed by MindAR
+[[headers]]
+for = "/*"
+[headers.values]
+# Required by MindAR for WebAssembly workers and camera access
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Embedder-Policy = "require-corp"
