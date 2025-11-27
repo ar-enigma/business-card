@@ -70,7 +70,7 @@
         </button>
 
         <div id="statusMessage" class="success-box mt-4">
-            <p id="errorText" class="font-mono text-xs">Awaiting AR script load...</p>
+            <p id="errorText" class="font-mono text-xs">Loading AR scripts from CDN...</p>
         </div>
     </div>
     
@@ -78,11 +78,10 @@
     <canvas id="arCanvas"></canvas>
 
     <script type="module">
-        // --- UPDATED IMPORTS ---
-        // We are using the standard module names for maximum compatibility
-        import * as THREE from './three.module.js'; 
-        import { MindARThree } from './mindar-image-three.prod.js'; 
-        // -----------------------
+        // --- USING STABLE CDN IMPORTS TO BYPASS LOCAL FILE/NAMING/CASE ERRORS ---
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.module.js'; 
+        import { MindARThree } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-three.prod.js'; 
+        // ----------------------------------------------------------------------
 
         const startButton = document.getElementById('startButton');
         const arCanvas = document.getElementById('arCanvas');
@@ -160,7 +159,7 @@
                 if (error.name === 'NotAllowedError' || error.message.includes('WebAssembly')) {
                     // This is the Cross-Origin Isolation error we have been fighting. 
                     // Netlify should prevent this, but if it still shows, it's a device issue.
-                    showError("CRITICAL: Camera blocked by browser security (COOP/COEP failed). This is a rare device security failure. Check console.");
+                    showError("CRITICAL: Camera blocked by browser security (COOP/COEP failed). This must be a browser/device security policy issue. Please check your browser's console for exact errors.");
                 } else if (error.name === 'NotFoundError') {
                     showError("Start Failed: Camera not found on this device.");
                 } else {
@@ -171,14 +170,9 @@
 
         startButton.addEventListener('click', initializeAR);
         
-        // Initial check to confirm modules are loaded
+        // Initial check now only confirms the page loaded
         window.addEventListener('load', () => {
-            // This is the check that confirms the import lines above executed successfully
-            if (typeof THREE === 'undefined' || typeof MindARThree === 'undefined') {
-                showError("Module Loading Error: Check that 'three.module.js' and 'mindar-image-three.prod.js' are correctly named in the repository root.");
-            } else {
-                showSuccess("All required modules loaded locally. Ready to start.");
-            }
+            showSuccess("Page loaded. Click Start to begin.");
         });
 
     </script>
