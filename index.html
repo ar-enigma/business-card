@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -6,19 +6,59 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ar-enigma/business-card/main/targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <a-scene
+      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ar-enigma/business-card/main/targets.mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
       <a-assets>
-	<img id="card" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" />
-	<a-asset-item id="avatarModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
+        <!-- Holographic ring -->
+        <a-asset-item id="ringModel" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Torus/glTF/Torus.gltf"></a-asset-item>
+        <!-- Glowing core -->
+        <a-asset-item id="glowModel" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Glow/glTF/Glow.gltf"></a-asset-item>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>
-        <a-gltf-model rotation="0 0 0 " position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"
-          animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
-        >
+
+        <!-- Rotating holographic ring -->
+        <a-gltf-model
+          src="#ringModel"
+          position="0 0 0.1"
+          scale="0.2 0.2 0.2"
+          rotation="0 0 0"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
+        ></a-gltf-model>
+
+        <!-- Glowing core -->
+        <a-gltf-model
+          src="#glowModel"
+          position="0 0 0.05"
+          scale="0.1 0.1 0.1"
+        ></a-gltf-model>
+
+        <!-- Floating contact info -->
+        <a-entity position="0 0.3 0.1">
+          <a-text
+            value="Ahmed Hashmi\n0316-1038953"
+            align="center"
+            color="#00FFFF"
+            width="1.5"
+          ></a-text>
+        </a-entity>
+
+        <a-entity position="0 -0.3 0.1">
+          <a-text
+            value="www.enigmamarketing.pk"
+            align="center"
+            color="#FF00FF"
+            width="1.5"
+          ></a-text>
+        </a-entity>
+
       </a-entity>
     </a-scene>
   </body>
