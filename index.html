@@ -14,7 +14,14 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <img id="gif" src="./motion-card.gif" crossorigin="anonymous">
+        <video 
+          id="motion-video" 
+          src="./motion-card.mp4" 
+          loop 
+          crossorigin="anonymous"
+          playsinline
+          webkit-playsinline
+        ></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -29,35 +36,35 @@
         ></a-plane>
 
         <a-plane
-          id="gif-plane"
+          id="video-plane"
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="src: #gif; transparent: true; alphaTest: 0.5"
+          material="src: #motion-video; transparent: true; alphaTest: 0.5"
           side="double"
         ></a-plane>
       </a-entity>
     </a-scene>
 
     <script>
-      // Alternative: Use video element for better GIF playback
-      AFRAME.registerComponent('gif-texture', {
-        schema: {
-          src: {type: 'string'}
-        },
-        init: function() {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.src = this.data.src;
-          
-          img.onload = () => {
-            const material = this.el.getObject3D('mesh').material;
-            const texture = new THREE.Texture(img);
-            texture.needsUpdate = true;
-            material.map = texture;
-            material.needsUpdate = true;
-          };
-        }
+      // Handle video playback when target is found/lost
+      const sceneEl = document.querySelector('a-scene');
+      const videoEl = document.getElementById('motion-video');
+      
+      sceneEl.addEventListener('DOMContentLoaded', function() {
+        const arSystem = sceneEl.systems["mindar-image-system"];
+        
+        // Play video when target is found
+        arSystem.el.addEventListener('targetFound', event => {
+          console.log("Target found");
+          videoEl.play();
+        });
+        
+        // Pause video when target is lost
+        arSystem.el.addEventListener('targetLost', event => {
+          console.log("Target lost");
+          videoEl.pause();
+        });
       });
     </script>
   </body>
