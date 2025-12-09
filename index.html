@@ -46,13 +46,64 @@
     </a-scene>
 
     <script>
+      // Component to animate GIF texture
+      AFRAME.registerComponent('gif-texture', {
+        schema: {
+          src: {type: 'selector'}
+        },
+        init: function() {
+          this.canvas = document.createElement('canvas');
+          this.ctx = this.canvas.getContext('2d');
+          this.img = this.data.src;
+          
+          // Wait for image to load
+          if (this.img.complete) {
+            this.setup();
+          } else {
+            this.img.onload = () => this.setup();
+          }
+        },
+        setup: function() {
+          this.canvas.width = this.img.width;
+          this.canvas.height = this.img.height;
+          
+          const texture = new THREE.CanvasTexture(this.canvas);
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          
+          const material = this.el.getObject3D('mesh').material;
+          material.map = texture;
+          material.needsUpdate = true;
+          
+          this.texture = texture;
+          this.animate();
+        },
+        animate: function() {
+          if (!this.canvas || !this.ctx || !this.img) return;
+          
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          this.ctx.drawImage(this.img, 0, 0, this.canvas.width, this.canvas.height);
+          
+          if (this.texture) {
+            this.texture.needsUpdate = true;
+          }
+          
+          requestAnimationFrame(() => this.animate());
+        }
+      });
+
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
         const targetEl = document.querySelector('[mindar-image-target]');
+        const gifPlane = document.getElementById('gif-plane');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
           console.log('Scene loaded');
+          
+          // Add GIF animation component
+          const gifImg = document.getElementById('motion-gif');
+          gifPlane.setAttribute('gif-texture', 'src', '#motion-gif');
           
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
@@ -64,7 +115,7 @@
         // Target found/lost logging
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("Target found - GIF should be animating");
+            console.log("Target found - GIF animating");
           });
           
           targetEl.addEventListener('targetLost', event => {
