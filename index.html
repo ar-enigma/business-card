@@ -7,9 +7,9 @@
   </head>
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;" 
       color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights"
+      renderer="colorManagement: true, physicallyCorrectLights, antialias: true"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
@@ -23,8 +23,7 @@
 
       <a-camera 
         position="0 0 0" 
-        look-controls="enabled: false" 
-        cursor="rayOrigin: mouse"
+        look-controls="enabled: false"
       ></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
@@ -41,35 +40,49 @@
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1"
+          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1; side: double"
         ></a-plane>
       </a-entity>
     </a-scene>
 
     <script>
+      AFRAME.registerComponent('stable-tracking', {
+        init: function() {
+          this.hasFoundOnce = false;
+          
+          this.el.addEventListener('targetFound', () => {
+            console.log("Target found");
+            this.hasFoundOnce = true;
+            this.el.object3D.visible = true;
+          });
+          
+          this.el.addEventListener('targetLost', () => {
+            console.log("Target lost - keeping visible");
+            // Keep the content visible even after losing tracking
+            if (this.hasFoundOnce) {
+              this.el.object3D.visible = true;
+            }
+          });
+        }
+      });
+
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
         const targetEl = document.querySelector('[mindar-image-target]');
+        
+        // Add stable tracking component
+        targetEl.setAttribute('stable-tracking', '');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
           console.log('Scene loaded');
           
-          // Start MindAR
+          // Start MindAR with optimized settings
           const arSystem = sceneEl.systems["mindar-image-system"];
-          arSystem.start();
+          arSystem.start().then(() => {
+            console.log('MindAR started successfully');
+          });
         });
-
-        // Target found/lost logging (GIF playback is automatic)
-        if (targetEl) {
-          targetEl.addEventListener('targetFound', event => {
-            console.log("Target found - GIF should be animating");
-          });
-          
-          targetEl.addEventListener('targetLost', event => {
-            console.log("Target lost");
-          });
-        }
       });
     </script>
 
