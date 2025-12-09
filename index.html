@@ -1,48 +1,33 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="./libs/aframe-master.min.js"></script>
-    <script src="./libs/mindar-image-aframe.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mayognaise/aframe-gif-shader/dist/aframe-gif-shader.min.js"></script>
-  </head>
-  <body>
-    <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind;" 
-      color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
+<head>
+  <title>MindAR A-Frame GIF Scene</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mindar-image@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://rawgit.com/mayognaise/aframe-gif-shader/master/dist/aframe-gif-shader.min.js"></script>
+</head>
+
+<body>
+  <a-scene 
+    mindar-image="imageTargetSrc: targets.mind; filterMinCF:0.0001; filterBeta: 1000;" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
     >
-      <a-assets>
-        <img id="gif" src="./motion-card-v2.gif">
-      </a-assets>
+    
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
+      
+      <a-entity 
+        position="0 0 0.1" 
+        rotation="90 0 0" 
+        scale="1 1 1"
+        geometry="primitive:plane; height:1.0; width:1.0;" 
+        material="shader:gif; src:url(motion-card-v2.gif); opacity:1.0"
+        ></a-entity>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane
-          position="0 0 0"
-          width="1"
-          height="0.552"
-          color="#000"
-          opacity="0.2"
-        ></a-plane>
-
-        <a-plane
-          position="0 0 0.05"
-          width="1"
-          height="0.552"
-          material="shader: gif; src: #gif; transparent: true"
-        ></a-plane>
-      </a-entity>
-    </a-scene>
-
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-      }
-    </style>
-  </body>
+    </a-entity>
+  </a-scene>
+</body> 
 </html>
