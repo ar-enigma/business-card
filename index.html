@@ -7,9 +7,9 @@
   </head>
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 2; missTolerance: 5;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" 
       color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights, antialias: true"
+      renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
@@ -21,10 +21,7 @@
         >
       </a-assets>
 
-      <a-camera 
-        position="0 0 0" 
-        look-controls="enabled: false"
-      ></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
@@ -40,88 +37,50 @@
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1; side: double"
+          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1"
         ></a-plane>
       </a-entity>
     </a-scene>
+    ```
 
+---
+
+### 2. JavaScript Changes
+
+For a GIF, we generally don't need to manually **play** or **pause** it because A-Frame automatically starts rendering the animated texture as soon as the target is found and the texture is loaded. This means we can **simplify the JavaScript** significantly by removing all the video-specific play/pause logic.
+
+```javascript
     <script>
-      // Component to animate GIF texture
-      AFRAME.registerComponent('gif-texture', {
-        schema: {
-          src: {type: 'selector'}
-        },
-        init: function() {
-          this.canvas = document.createElement('canvas');
-          this.ctx = this.canvas.getContext('2d');
-          this.img = this.data.src;
-          
-          // Wait for image to load
-          if (this.img.complete) {
-            this.setup();
-          } else {
-            this.img.onload = () => this.setup();
-          }
-        },
-        setup: function() {
-          this.canvas.width = this.img.width;
-          this.canvas.height = this.img.height;
-          
-          const texture = new THREE.CanvasTexture(this.canvas);
-          texture.minFilter = THREE.LinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          
-          const material = this.el.getObject3D('mesh').material;
-          material.map = texture;
-          material.needsUpdate = true;
-          
-          this.texture = texture;
-          this.animate();
-        },
-        animate: function() {
-          if (!this.canvas || !this.ctx || !this.img) return;
-          
-          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-          this.ctx.drawImage(this.img, 0, 0, this.canvas.width, this.canvas.height);
-          
-          if (this.texture) {
-            this.texture.needsUpdate = true;
-          }
-          
-          requestAnimationFrame(() => this.animate());
-        }
-      });
-
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
+        // 💡 REMOVED: const videoEl = document.getElementById('motion-video');
         const targetEl = document.querySelector('[mindar-image-target]');
-        const gifPlane = document.getElementById('gif-plane');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
           console.log('Scene loaded');
           
-          // Add GIF animation component
-          const gifImg = document.getElementById('motion-gif');
-          gifPlane.setAttribute('gif-texture', 'src', '#motion-gif');
-          
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
-          arSystem.start().then(() => {
-            console.log('MindAR started successfully');
-          });
+          arSystem.start();
         });
 
-        // Target found/lost logging
+        // 💡 SIMPLIFIED: Only targetFound/Lost logging is necessary. 
+        // A-Frame handles the GIF texture animation automatically.
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("Target found - GIF animating");
+            console.log("Target found - GIF should be animating");
+            // No need to call .play() or handle interaction for GIF
           });
           
           targetEl.addEventListener('targetLost', event => {
             console.log("Target lost");
+            // No need to call .pause() for GIF
           });
         }
+
+        // 💡 REMOVED: The initial touch/interaction handler is not needed for GIF playback
+        // as browser policy mostly affects <video> autoplay.
       });
     </script>
 
