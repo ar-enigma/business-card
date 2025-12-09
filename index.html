@@ -52,15 +52,6 @@
     </a-scene>
     
     <script>
-      // Register Service Worker
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-          console.log('Service Worker registered');
-        }).catch(err => {
-          console.log('Service Worker registration failed:', err);
-        });
-      }
-
       // Register component to animate GIF
       AFRAME.registerComponent('animated-gif', {
         schema: {
@@ -117,17 +108,37 @@
 
         // Start button handler
         startButton.addEventListener('click', async function() {
+          console.log('Start button clicked');
+          startButton.textContent = 'LOADING...';
+          startButton.disabled = true;
+          
           try {
+            console.log('Requesting camera permission...');
+            
+            // Check if mediaDevices is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+              throw new Error('Camera not supported on this device');
+            }
+            
             // Request camera permission
             const stream = await navigator.mediaDevices.getUserMedia({ 
-              video: { facingMode: 'environment' } 
+              video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              } 
             });
+            
+            console.log('✓ Camera permission granted');
             
             // Stop the test stream (MindAR will create its own)
             stream.getTracks().forEach(track => track.stop());
             
             // Hide overlay
-            startOverlay.style.display = 'none';
+            startOverlay.style.opacity = '0';
+            setTimeout(() => {
+              startOverlay.style.display = 'none';
+            }, 300);
             
             // Wait for scene to be ready
             if (sceneEl.hasLoaded) {
@@ -137,8 +148,20 @@
             }
             
           } catch (err) {
-            console.error('Camera permission denied:', err);
-            alert('Camera permission is required for AR. Please allow camera access and try again.');
+            console.error('Error:', err);
+            startButton.textContent = 'TRY AGAIN';
+            startButton.disabled = false;
+            
+            let errorMsg = 'Camera permission is required for AR.';
+            if (err.name === 'NotAllowedError') {
+              errorMsg = 'Camera access denied. Please allow camera permission in your browser settings.';
+            } else if (err.name === 'NotFoundError') {
+              errorMsg = 'No camera found on this device.';
+            } else if (err.name === 'NotSupportedError') {
+              errorMsg = 'Camera not supported. Please use HTTPS.';
+            }
+            
+            alert(errorMsg + '\n\nError: ' + err.message);
           }
         });
 
@@ -196,6 +219,7 @@
         align-items: center;
         justify-content: center;
         z-index: 9999;
+        transition: opacity 0.3s;
       }
 
       #start-content {
@@ -233,6 +257,11 @@
       #start-button:active {
         transform: scale(0.95);
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      }
+
+      #start-button:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
       
       .mindar-ui-overlay {
