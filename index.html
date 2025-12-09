@@ -41,15 +41,6 @@
         ></a-plane>
       </a-entity>
     </a-scene>
-    ```
-
----
-
-### 2. JavaScript Changes
-
-For a GIF, we generally don't need to manually **play** or **pause** it because A-Frame automatically starts rendering the animated texture as soon as the target is found and the texture is loaded. This means we can **simplify the JavaScript** significantly by removing all the video-specific play/pause logic.
-
-```javascript
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
