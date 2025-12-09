@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-master.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
@@ -16,15 +16,17 @@
       <a-assets>
         <video 
           id="motion-video" 
-          src="./motion-card.mp4" 
-          loop 
-          crossorigin="anonymous"
+          src="./motion-card.mp4"
+          preload="auto"
+          loop
+          muted
           playsinline
           webkit-playsinline
+          crossorigin="anonymous"
         ></video>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
@@ -40,32 +42,79 @@
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="src: #motion-video; transparent: true; alphaTest: 0.5"
-          side="double"
+          material="shader: flat; src: #motion-video; transparent: true; opacity: 1"
         ></a-plane>
       </a-entity>
     </a-scene>
 
     <script>
-      // Handle video playback when target is found/lost
-      const sceneEl = document.querySelector('a-scene');
-      const videoEl = document.getElementById('motion-video');
-      
-      sceneEl.addEventListener('DOMContentLoaded', function() {
-        const arSystem = sceneEl.systems["mindar-image-system"];
+      document.addEventListener('DOMContentLoaded', function() {
+        const sceneEl = document.querySelector('a-scene');
+        const videoEl = document.getElementById('motion-video');
+        const targetEl = document.querySelector('[mindar-image-target]');
         
-        // Play video when target is found
-        arSystem.el.addEventListener('targetFound', event => {
-          console.log("Target found");
-          videoEl.play();
+        // Wait for scene to load
+        sceneEl.addEventListener('loaded', function() {
+          console.log('Scene loaded');
+          
+          // Start MindAR
+          const arSystem = sceneEl.systems["mindar-image-system"];
+          arSystem.start();
         });
-        
-        // Pause video when target is lost
-        arSystem.el.addEventListener('targetLost', event => {
-          console.log("Target lost");
-          videoEl.pause();
-        });
+
+        // Handle target found
+        if (targetEl) {
+          targetEl.addEventListener('targetFound', event => {
+            console.log("Target found - playing video");
+            if (videoEl.paused) {
+              videoEl.play().catch(err => {
+                console.log("Video play failed:", err);
+                // Try to play with user interaction
+                document.body.addEventListener('click', () => {
+                  videoEl.play();
+                }, { once: true });
+              });
+            }
+          });
+          
+          targetEl.addEventListener('targetLost', event => {
+            console.log("Target lost - pausing video");
+            videoEl.pause();
+          });
+        }
+
+        // Alternative: Try to start video on any user interaction
+        let hasInteracted = false;
+        document.body.addEventListener('touchstart', function initVideo() {
+          if (!hasInteracted) {
+            hasInteracted = true;
+            console.log("User interaction detected");
+            videoEl.play().then(() => {
+              videoEl.pause(); // Pause immediately, will play when target found
+            }).catch(err => console.log("Initial video load failed:", err));
+          }
+        }, { once: true });
       });
     </script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      
+      .mindar-ui-overlay {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 2;
+      }
+    </style>
   </body>
 </html>
