@@ -14,16 +14,11 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <video 
-          id="motion-video" 
-          src="./motion-card.mp4"
-          preload="auto"
-          loop
-          muted
-          playsinline
-          webkit-playsinline
+        <img 
+          id="motion-gif" 
+          src="./motion-card.gif"
           crossorigin="anonymous"
-        ></video>
+        >
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
@@ -38,19 +33,27 @@
         ></a-plane>
 
         <a-plane
-          id="video-plane"
+          id="gif-plane"
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="shader: flat; src: #motion-video; transparent: true; opacity: 1"
+          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1"
         ></a-plane>
       </a-entity>
     </a-scene>
+    ```
 
+---
+
+### 2. JavaScript Changes
+
+For a GIF, we generally don't need to manually **play** or **pause** it because A-Frame automatically starts rendering the animated texture as soon as the target is found and the texture is loaded. This means we can **simplify the JavaScript** significantly by removing all the video-specific play/pause logic.
+
+```javascript
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
-        const videoEl = document.getElementById('motion-video');
+        // 💡 REMOVED: const videoEl = document.getElementById('motion-video');
         const targetEl = document.querySelector('[mindar-image-target]');
         
         // Wait for scene to load
@@ -62,38 +65,22 @@
           arSystem.start();
         });
 
-        // Handle target found
+        // 💡 SIMPLIFIED: Only targetFound/Lost logging is necessary. 
+        // A-Frame handles the GIF texture animation automatically.
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("Target found - playing video");
-            if (videoEl.paused) {
-              videoEl.play().catch(err => {
-                console.log("Video play failed:", err);
-                // Try to play with user interaction
-                document.body.addEventListener('click', () => {
-                  videoEl.play();
-                }, { once: true });
-              });
-            }
+            console.log("Target found - GIF should be animating");
+            // No need to call .play() or handle interaction for GIF
           });
           
           targetEl.addEventListener('targetLost', event => {
-            console.log("Target lost - pausing video");
-            videoEl.pause();
+            console.log("Target lost");
+            // No need to call .pause() for GIF
           });
         }
 
-        // Alternative: Try to start video on any user interaction
-        let hasInteracted = false;
-        document.body.addEventListener('touchstart', function initVideo() {
-          if (!hasInteracted) {
-            hasInteracted = true;
-            console.log("User interaction detected");
-            videoEl.play().then(() => {
-              videoEl.pause(); // Pause immediately, will play when target found
-            }).catch(err => console.log("Initial video load failed:", err));
-          }
-        }, { once: true });
+        // 💡 REMOVED: The initial touch/interaction handler is not needed for GIF playback
+        // as browser policy mostly affects <video> autoplay.
       });
     </script>
 
