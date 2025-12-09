@@ -12,16 +12,16 @@
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
+      embedded
     >
       <a-assets>
         <img 
           id="motion-gif" 
           src="./motion-card-v2.gif"
-          crossorigin="anonymous"
         >
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
@@ -37,41 +37,98 @@
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1"
         ></a-plane>
       </a-entity>
     </a-scene>
+    
     <script>
+      // Register Service Worker for cache management
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('Service Worker registered');
+        }).catch(err => {
+          console.log('Service Worker registration failed:', err);
+        });
+      }
+
+      // Register component to animate GIF
+      AFRAME.registerComponent('animated-gif', {
+        schema: {
+          src: {type: 'selector'}
+        },
+        init: function() {
+          const img = this.data.src;
+          
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          const setupCanvas = () => {
+            canvas.width = img.naturalWidth || img.width || 512;
+            canvas.height = img.naturalHeight || img.height || 512;
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            
+            const mesh = this.el.getObject3D('mesh');
+            if (mesh && mesh.material) {
+              mesh.material.map = texture;
+              mesh.material.transparent = true;
+              mesh.material.needsUpdate = true;
+            }
+            
+            const animate = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              texture.needsUpdate = true;
+              requestAnimationFrame(animate);
+            };
+            
+            animate();
+          };
+          
+          if (img.complete && img.naturalWidth) {
+            setupCanvas();
+          } else {
+            img.onload = setupCanvas;
+          }
+        }
+      });
+
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
-        // 💡 REMOVED: const videoEl = document.getElementById('motion-video');
         const targetEl = document.querySelector('[mindar-image-target]');
+        const gifPlane = document.getElementById('gif-plane');
+        const gifImg = document.getElementById('motion-gif');
         
-        // Wait for scene to load
+        // Check GIF loading
+        gifImg.onload = () => console.log('✓ GIF loaded');
+        gifImg.onerror = () => console.error('✗ GIF failed to load');
+        
         sceneEl.addEventListener('loaded', function() {
-          console.log('Scene loaded');
+          console.log('✓ Scene loaded');
+          
+          // Apply animated GIF component
+          gifPlane.setAttribute('animated-gif', 'src', '#motion-gif');
           
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
-          arSystem.start();
+          arSystem.start().then(() => {
+            console.log('✓ MindAR started - Point camera at target');
+          }).catch(err => {
+            console.error('✗ MindAR failed:', err);
+          });
         });
 
-        // 💡 SIMPLIFIED: Only targetFound/Lost logging is necessary. 
-        // A-Frame handles the GIF texture animation automatically.
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("Target found - GIF should be animating");
-            // No need to call .play() or handle interaction for GIF
+            console.log("✓ Target found - GIF animating");
           });
           
           targetEl.addEventListener('targetLost', event => {
             console.log("Target lost");
-            // No need to call .pause() for GIF
           });
         }
-
-        // 💡 REMOVED: The initial touch/interaction handler is not needed for GIF playback
-        // as browser policy mostly affects <video> autoplay.
       });
     </script>
 
