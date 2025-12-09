@@ -21,7 +21,11 @@
         >
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
+      <a-camera 
+        position="0 0 0" 
+        look-controls="enabled: false" 
+        cursor="rayOrigin: mouse"
+      ></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
@@ -41,19 +45,10 @@
         ></a-plane>
       </a-entity>
     </a-scene>
-    ```
 
----
-
-### 2. JavaScript Changes
-
-For a GIF, we generally don't need to manually **play** or **pause** it because A-Frame automatically starts rendering the animated texture as soon as the target is found and the texture is loaded. This means we can **simplify the JavaScript** significantly by removing all the video-specific play/pause logic.
-
-```javascript
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
-        // 💡 REMOVED: const videoEl = document.getElementById('motion-video');
         const targetEl = document.querySelector('[mindar-image-target]');
         
         // Wait for scene to load
@@ -65,22 +60,16 @@ For a GIF, we generally don't need to manually **play** or **pause** it because 
           arSystem.start();
         });
 
-        // 💡 SIMPLIFIED: Only targetFound/Lost logging is necessary. 
-        // A-Frame handles the GIF texture animation automatically.
+        // Target found/lost logging (GIF playback is automatic)
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
             console.log("Target found - GIF should be animating");
-            // No need to call .play() or handle interaction for GIF
           });
           
           targetEl.addEventListener('targetLost', event => {
             console.log("Target lost");
-            // No need to call .pause() for GIF
           });
         }
-
-        // 💡 REMOVED: The initial touch/interaction handler is not needed for GIF playback
-        // as browser policy mostly affects <video> autoplay.
       });
     </script>
 
