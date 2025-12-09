@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="./libs/aframe-master.min.js"></script>
-    <script src="./libs/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-master.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
     <a-scene
@@ -14,42 +14,47 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <video 
-          id="motion-video" 
-          src="./motion-card.webm"
+        <img 
+          id="motion-gif" 
+          src="./motion-card.gif"
           crossorigin="anonymous"
-          loop
-          muted
-          playsinline
-        ></video>
+        >
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-plane
           position="0 0 0"
           width="1"
           height="0.552"
-          color="#FF0000"
-          opacity="0.5"
+          color="#000"
+          opacity="0.2"
         ></a-plane>
 
         <a-plane
-          id="video-plane"
+          id="gif-plane"
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="src: #motion-video; transparent: true"
+          material="shader: flat; src: #motion-gif; transparent: true; opacity: 1"
         ></a-plane>
       </a-entity>
     </a-scene>
+    ```
 
+---
+
+### 2. JavaScript Changes
+
+For a GIF, we generally don't need to manually **play** or **pause** it because A-Frame automatically starts rendering the animated texture as soon as the target is found and the texture is loaded. This means we can **simplify the JavaScript** significantly by removing all the video-specific play/pause logic.
+
+```javascript
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
+        // 💡 REMOVED: const videoEl = document.getElementById('motion-video');
         const targetEl = document.querySelector('[mindar-image-target]');
-        const video = document.getElementById('motion-video');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
@@ -57,31 +62,25 @@
           
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
-          arSystem.start().then(() => {
-            console.log('MindAR started');
-          }).catch(err => {
-            console.error('MindAR failed:', err);
-          });
+          arSystem.start();
         });
 
-        // Play/pause video based on target detection
+        // 💡 SIMPLIFIED: Only targetFound/Lost logging is necessary. 
+        // A-Frame handles the GIF texture animation automatically.
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("✓ Target found - Video playing");
-            video.play();
+            console.log("Target found - GIF should be animating");
+            // No need to call .play() or handle interaction for GIF
           });
           
           targetEl.addEventListener('targetLost', event => {
-            console.log("Target lost - Video paused");
-            video.pause();
+            console.log("Target lost");
+            // No need to call .pause() for GIF
           });
         }
-        
-        // Check if video loaded
-        if (video) {
-          video.onloadeddata = () => console.log('✓ Video loaded:', video.videoWidth, 'x', video.videoHeight);
-          video.onerror = () => console.error('✗ Video failed to load');
-        }
+
+        // 💡 REMOVED: The initial touch/interaction handler is not needed for GIF playback
+        // as browser policy mostly affects <video> autoplay.
       });
     </script>
 
