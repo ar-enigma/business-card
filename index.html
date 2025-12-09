@@ -2,17 +2,27 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="./libs/aframe-master.min.js"></script>
     <script src="./libs/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
+    <!-- Start button overlay -->
+    <div id="start-overlay">
+      <div id="start-content">
+        <h1>AR Business Card</h1>
+        <p>Point your camera at the business card to see the animation</p>
+        <button id="start-button">START AR</button>
+      </div>
+    </div>
+
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
-      embedded
     >
       <a-assets>
         <img 
@@ -42,7 +52,7 @@
     </a-scene>
     
     <script>
-      // Register Service Worker for cache management
+      // Register Service Worker
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').then(reg => {
           console.log('Service Worker registered');
@@ -100,13 +110,43 @@
         const targetEl = document.querySelector('[mindar-image-target]');
         const gifPlane = document.getElementById('gif-plane');
         const gifImg = document.getElementById('motion-gif');
+        const startOverlay = document.getElementById('start-overlay');
+        const startButton = document.getElementById('start-button');
         
-        // Check GIF loading
-        gifImg.onload = () => console.log('✓ GIF loaded');
-        gifImg.onerror = () => console.error('✗ GIF failed to load');
-        
-        sceneEl.addEventListener('loaded', function() {
-          console.log('✓ Scene loaded');
+        let arStarted = false;
+
+        // Start button handler
+        startButton.addEventListener('click', async function() {
+          try {
+            // Request camera permission
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: 'environment' } 
+            });
+            
+            // Stop the test stream (MindAR will create its own)
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Hide overlay
+            startOverlay.style.display = 'none';
+            
+            // Wait for scene to be ready
+            if (sceneEl.hasLoaded) {
+              startAR();
+            } else {
+              sceneEl.addEventListener('loaded', startAR);
+            }
+            
+          } catch (err) {
+            console.error('Camera permission denied:', err);
+            alert('Camera permission is required for AR. Please allow camera access and try again.');
+          }
+        });
+
+        function startAR() {
+          if (arStarted) return;
+          arStarted = true;
+          
+          console.log('✓ Starting AR...');
           
           // Apply animated GIF component
           gifPlane.setAttribute('animated-gif', 'src', '#motion-gif');
@@ -114,21 +154,27 @@
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
           arSystem.start().then(() => {
-            console.log('✓ MindAR started - Point camera at target');
+            console.log('✓ AR Started - Point camera at business card');
           }).catch(err => {
-            console.error('✗ MindAR failed:', err);
+            console.error('✗ AR failed to start:', err);
+            alert('AR failed to start. Please refresh and try again.');
           });
-        });
+        }
 
+        // Target detection handlers
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("✓ Target found - GIF animating");
+            console.log("✓ Target found!");
           });
           
           targetEl.addEventListener('targetLost', event => {
             console.log("Target lost");
           });
         }
+
+        // Check GIF loading
+        gifImg.onload = () => console.log('✓ GIF loaded');
+        gifImg.onerror = () => console.error('✗ GIF failed to load');
       });
     </script>
 
@@ -136,19 +182,61 @@
       body {
         margin: 0;
         overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
       }
       
-      .mindar-ui-overlay {
+      #start-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        background: transparent;
-        z-index: 2;
+        z-index: 9999;
+      }
+
+      #start-content {
+        text-align: center;
+        color: white;
+        padding: 20px;
+        max-width: 400px;
+      }
+
+      #start-content h1 {
+        font-size: 32px;
+        margin-bottom: 20px;
+        font-weight: bold;
+      }
+
+      #start-content p {
+        font-size: 16px;
+        margin-bottom: 30px;
+        opacity: 0.9;
+      }
+
+      #start-button {
+        background: white;
+        color: #667eea;
+        border: none;
+        padding: 15px 40px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      #start-button:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      }
+      
+      .mindar-ui-overlay {
+        display: none !important;
       }
     </style>
   </body>
