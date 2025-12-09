@@ -14,11 +14,14 @@
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <img 
-          id="motion-gif" 
-          src="./motion-card-v2.gif"
+        <video 
+          id="motion-video" 
+          src="./motion-card.webm"
           crossorigin="anonymous"
-        >
+          loop
+          muted
+          playsinline
+        ></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -33,88 +36,20 @@
         ></a-plane>
 
         <a-plane
-          id="gif-plane"
+          id="video-plane"
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="transparent: true"
-          animated-gif="src: #motion-gif"
+          material="src: #motion-video; transparent: true"
         ></a-plane>
       </a-entity>
     </a-scene>
 
     <script>
-      // Register component to animate GIF
-      AFRAME.registerComponent('animated-gif', {
-        schema: {
-          src: {type: 'selector'}
-        },
-        
-        init: function() {
-          this.animationId = null;
-          this.setupGif();
-        },
-        
-        setupGif: function() {
-          const img = this.data.src;
-          if (!img) {
-            console.error('No image source provided');
-            return;
-          }
-          
-          // Create canvas for GIF animation
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          const startAnimation = () => {
-            canvas.width = img.naturalWidth || img.width || 512;
-            canvas.height = img.naturalHeight || img.height || 512;
-            
-            // Create texture from canvas
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            
-            // Apply to material
-            const mesh = this.el.getObject3D('mesh');
-            if (mesh) {
-              mesh.material.map = texture;
-              mesh.material.transparent = true;
-              mesh.material.needsUpdate = true;
-            }
-            
-            // Animation loop - continuously redraw GIF
-            const animate = () => {
-              if (ctx && canvas) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                texture.needsUpdate = true;
-              }
-              this.animationId = requestAnimationFrame(animate);
-            };
-            
-            animate();
-            console.log('✓ GIF animation started:', canvas.width, 'x', canvas.height);
-          };
-          
-          if (img.complete && img.naturalWidth > 0) {
-            startAnimation();
-          } else {
-            img.onload = startAnimation;
-          }
-        },
-        
-        remove: function() {
-          // Clean up animation loop when component is removed
-          if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
-          }
-        }
-      });
-
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
         const targetEl = document.querySelector('[mindar-image-target]');
+        const video = document.getElementById('motion-video');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
@@ -129,22 +64,23 @@
           });
         });
 
-        // Debug logging
+        // Play/pause video based on target detection
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("✓ Target found - GIF should be animating");
+            console.log("✓ Target found - Video playing");
+            video.play();
           });
           
           targetEl.addEventListener('targetLost', event => {
-            console.log("Target lost");
+            console.log("Target lost - Video paused");
+            video.pause();
           });
         }
         
-        // Check if GIF loaded
-        const gifImg = document.getElementById('motion-gif');
-        if (gifImg) {
-          gifImg.onload = () => console.log('✓ GIF loaded:', gifImg.width, 'x', gifImg.height);
-          gifImg.onerror = () => console.error('✗ GIF failed to load');
+        // Check if video loaded
+        if (video) {
+          video.onloadeddata = () => console.log('✓ Video loaded:', video.videoWidth, 'x', video.videoHeight);
+          video.onerror = () => console.error('✗ Video failed to load');
         }
       });
     </script>
