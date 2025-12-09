@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="./libs/aframe-master.min.js"></script>
-<script src="./libs/mindar-image-aframe.prod.js"></script>
+    <script src="./libs/mindar-image-aframe.prod.js"></script>
   </head>
   <body>
     <a-scene
@@ -37,7 +37,8 @@
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="src: #motion-gif; transparent: true; alphaTest: 0.5"
+          material="transparent: true"
+          animated-gif="src: #motion-gif"
         ></a-plane>
       </a-entity>
     </a-scene>
@@ -48,42 +49,65 @@
         schema: {
           src: {type: 'selector'}
         },
+        
         init: function() {
+          this.animationId = null;
+          this.setupGif();
+        },
+        
+        setupGif: function() {
           const img = this.data.src;
+          if (!img) {
+            console.error('No image source provided');
+            return;
+          }
           
           // Create canvas for GIF animation
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          const setupCanvas = () => {
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
+          const startAnimation = () => {
+            canvas.width = img.naturalWidth || img.width || 512;
+            canvas.height = img.naturalHeight || img.height || 512;
             
             // Create texture from canvas
             const texture = new THREE.CanvasTexture(canvas);
             texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
             
             // Apply to material
             const mesh = this.el.getObject3D('mesh');
             if (mesh) {
               mesh.material.map = texture;
+              mesh.material.transparent = true;
               mesh.material.needsUpdate = true;
             }
             
-            // Animation loop
+            // Animation loop - continuously redraw GIF
             const animate = () => {
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              texture.needsUpdate = true;
-              requestAnimationFrame(animate);
+              if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                texture.needsUpdate = true;
+              }
+              this.animationId = requestAnimationFrame(animate);
             };
             
             animate();
+            console.log('✓ GIF animation started:', canvas.width, 'x', canvas.height);
           };
           
-          if (img.complete) {
-            setupCanvas();
+          if (img.complete && img.naturalWidth > 0) {
+            startAnimation();
           } else {
-            img.onload = setupCanvas;
+            img.onload = startAnimation;
+          }
+        },
+        
+        remove: function() {
+          // Clean up animation loop when component is removed
+          if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
           }
         }
       });
@@ -91,14 +115,10 @@
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
         const targetEl = document.querySelector('[mindar-image-target]');
-        const gifPlane = document.getElementById('gif-plane');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
           console.log('Scene loaded');
-          
-          // Apply animated GIF component
-          gifPlane.setAttribute('animated-gif', 'src', '#motion-gif');
           
           // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
@@ -112,7 +132,7 @@
         // Debug logging
         if (targetEl) {
           targetEl.addEventListener('targetFound', event => {
-            console.log("✓ Target found - GIF animating");
+            console.log("✓ Target found - GIF should be animating");
           });
           
           targetEl.addEventListener('targetLost', event => {
@@ -122,8 +142,10 @@
         
         // Check if GIF loaded
         const gifImg = document.getElementById('motion-gif');
-        gifImg.onload = () => console.log('✓ GIF loaded:', gifImg.width, 'x', gifImg.height);
-        gifImg.onerror = () => console.error('✗ GIF failed to load');
+        if (gifImg) {
+          gifImg.onload = () => console.log('✓ GIF loaded:', gifImg.width, 'x', gifImg.height);
+          gifImg.onerror = () => console.error('✗ GIF failed to load');
+        }
       });
     </script>
 
