@@ -2,33 +2,20 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="./libs/aframe-master.min.js"></script>
     <script src="./libs/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mayognaise/aframe-gif-shader/dist/aframe-gif-shader.min.js"></script>
   </head>
   <body>
-    <!-- Start button overlay -->
-    <div id="start-overlay">
-      <div id="start-content">
-        <h1>AR Business Card</h1>
-        <p>Point your camera at the business card to see the animation</p>
-        <button id="start-button">START AR</button>
-      </div>
-    </div>
-
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;" 
+      mindar-image="imageTargetSrc: ./targets.mind;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
       <a-assets>
-        <img 
-          id="motion-gif" 
-          src="./motion-card-v2.gif"
-        >
+        <img id="gif" src="./motion-card-v2.gif">
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -43,229 +30,18 @@
         ></a-plane>
 
         <a-plane
-          id="gif-plane"
           position="0 0 0.05"
           width="1"
           height="0.552"
+          material="shader: gif; src: #gif; transparent: true"
         ></a-plane>
       </a-entity>
     </a-scene>
-    
-    <script>
-      // Register component to animate GIF
-      AFRAME.registerComponent('animated-gif', {
-        schema: {
-          src: {type: 'selector'}
-        },
-        init: function() {
-          const img = this.data.src;
-          
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          const setupCanvas = () => {
-            canvas.width = img.naturalWidth || img.width || 512;
-            canvas.height = img.naturalHeight || img.height || 512;
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            
-            const mesh = this.el.getObject3D('mesh');
-            if (mesh && mesh.material) {
-              mesh.material.map = texture;
-              mesh.material.transparent = true;
-              mesh.material.needsUpdate = true;
-            }
-            
-            const animate = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              texture.needsUpdate = true;
-              requestAnimationFrame(animate);
-            };
-            
-            animate();
-          };
-          
-          if (img.complete && img.naturalWidth) {
-            setupCanvas();
-          } else {
-            img.onload = setupCanvas;
-          }
-        }
-      });
-
-      document.addEventListener('DOMContentLoaded', function() {
-        const sceneEl = document.querySelector('a-scene');
-        const targetEl = document.querySelector('[mindar-image-target]');
-        const gifPlane = document.getElementById('gif-plane');
-        const gifImg = document.getElementById('motion-gif');
-        const startOverlay = document.getElementById('start-overlay');
-        const startButton = document.getElementById('start-button');
-        
-        let arStarted = false;
-
-        // Start button handler
-        startButton.addEventListener('click', async function() {
-          console.log('Start button clicked');
-          startButton.textContent = 'LOADING...';
-          startButton.disabled = true;
-          
-          try {
-            console.log('Requesting camera permission...');
-            
-            // Check if mediaDevices is supported
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-              throw new Error('Camera not supported on this device');
-            }
-            
-            // Request camera permission
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-              video: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              } 
-            });
-            
-            console.log('✓ Camera permission granted');
-            
-            // Stop the test stream (MindAR will create its own)
-            stream.getTracks().forEach(track => track.stop());
-            
-            // Hide overlay
-            startOverlay.style.opacity = '0';
-            setTimeout(() => {
-              startOverlay.style.display = 'none';
-            }, 300);
-            
-            // Wait for scene to be ready
-            if (sceneEl.hasLoaded) {
-              startAR();
-            } else {
-              sceneEl.addEventListener('loaded', startAR);
-            }
-            
-          } catch (err) {
-            console.error('Error:', err);
-            startButton.textContent = 'TRY AGAIN';
-            startButton.disabled = false;
-            
-            let errorMsg = 'Camera permission is required for AR.';
-            if (err.name === 'NotAllowedError') {
-              errorMsg = 'Camera access denied. Please allow camera permission in your browser settings.';
-            } else if (err.name === 'NotFoundError') {
-              errorMsg = 'No camera found on this device.';
-            } else if (err.name === 'NotSupportedError') {
-              errorMsg = 'Camera not supported. Please use HTTPS.';
-            }
-            
-            alert(errorMsg + '\n\nError: ' + err.message);
-          }
-        });
-
-        function startAR() {
-          if (arStarted) return;
-          arStarted = true;
-          
-          console.log('✓ Starting AR...');
-          
-          // Apply animated GIF component
-          gifPlane.setAttribute('animated-gif', 'src', '#motion-gif');
-          
-          // Start MindAR
-          const arSystem = sceneEl.systems["mindar-image-system"];
-          arSystem.start().then(() => {
-            console.log('✓ AR Started - Point camera at business card');
-          }).catch(err => {
-            console.error('✗ AR failed to start:', err);
-            alert('AR failed to start. Please refresh and try again.');
-          });
-        }
-
-        // Target detection handlers
-        if (targetEl) {
-          targetEl.addEventListener('targetFound', event => {
-            console.log("✓ Target found!");
-          });
-          
-          targetEl.addEventListener('targetLost', event => {
-            console.log("Target lost");
-          });
-        }
-
-        // Check GIF loading
-        gifImg.onload = () => console.log('✓ GIF loaded');
-        gifImg.onerror = () => console.error('✗ GIF failed to load');
-      });
-    </script>
 
     <style>
       body {
         margin: 0;
         overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      }
-      
-      #start-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        transition: opacity 0.3s;
-      }
-
-      #start-content {
-        text-align: center;
-        color: white;
-        padding: 20px;
-        max-width: 400px;
-      }
-
-      #start-content h1 {
-        font-size: 32px;
-        margin-bottom: 20px;
-        font-weight: bold;
-      }
-
-      #start-content p {
-        font-size: 16px;
-        margin-bottom: 30px;
-        opacity: 0.9;
-      }
-
-      #start-button {
-        background: white;
-        color: #667eea;
-        border: none;
-        padding: 15px 40px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 50px;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-
-      #start-button:active {
-        transform: scale(0.95);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      }
-
-      #start-button:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-      }
-      
-      .mindar-ui-overlay {
-        display: none !important;
       }
     </style>
   </body>
