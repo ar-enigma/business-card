@@ -7,7 +7,7 @@
   </head>
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 5;" 
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 2; missTolerance: 5;" 
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights, antialias: true"
       vr-mode-ui="enabled: false"
@@ -46,43 +46,31 @@
     </a-scene>
 
     <script>
-      AFRAME.registerComponent('stable-tracking', {
-        init: function() {
-          this.hasFoundOnce = false;
-          
-          this.el.addEventListener('targetFound', () => {
-            console.log("Target found");
-            this.hasFoundOnce = true;
-            this.el.object3D.visible = true;
-          });
-          
-          this.el.addEventListener('targetLost', () => {
-            console.log("Target lost - keeping visible");
-            // Keep the content visible even after losing tracking
-            if (this.hasFoundOnce) {
-              this.el.object3D.visible = true;
-            }
-          });
-        }
-      });
-
       document.addEventListener('DOMContentLoaded', function() {
         const sceneEl = document.querySelector('a-scene');
         const targetEl = document.querySelector('[mindar-image-target]');
-        
-        // Add stable tracking component
-        targetEl.setAttribute('stable-tracking', '');
         
         // Wait for scene to load
         sceneEl.addEventListener('loaded', function() {
           console.log('Scene loaded');
           
-          // Start MindAR with optimized settings
+          // Start MindAR
           const arSystem = sceneEl.systems["mindar-image-system"];
           arSystem.start().then(() => {
             console.log('MindAR started successfully');
           });
         });
+
+        // Target found/lost logging
+        if (targetEl) {
+          targetEl.addEventListener('targetFound', event => {
+            console.log("Target found - GIF should be animating");
+          });
+          
+          targetEl.addEventListener('targetLost', event => {
+            console.log("Target lost");
+          });
+        }
       });
     </script>
 
