@@ -2,16 +2,13 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- A-Frame + MindAR -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- GIF Shader (updated CDN) -->
     <script src="https://cdn.jsdelivr.net/gh/mayognaise/aframe-gif-shader/dist/aframe-gif-shader.min.js"></script>
   </head>
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ar-enigma/business-card/main/targets.mind;"
-      color-space="sRGB"
+      mindar-image="imageTargetSrc: ./targets.mind;" color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
@@ -19,7 +16,6 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Base card plane -->
         <a-plane
           position="0 0 0"
           width="1"
@@ -28,13 +24,11 @@
           opacity="0.2"
         ></a-plane>
 
-        <!-- Motion graphics GIF overlay -->
         <a-plane
           position="0 0 0.05"
           width="1"
           height="0.552"
-          material="shader: gif; src: url(./motion-card.gif);
-        ></a-plane>
+          material="shader: gif; src: url(./motion-card.gif); transparent:true; side:double" ></a-plane>
       </a-entity>
     </a-scene>
   </body>
