@@ -1,34 +1,76 @@
-
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/16/Stats.min.js"></script>
+    <script src="../../src/image-target/aframe.js" type="module"></script>
+
     <script>
       document.addEventListener("DOMContentLoaded", function() {
-	const list = ["glasses1", "glasses2", "hat1", "hat2", "earring"];
-	const visibles = [true, false, false, true, true];
-	const setVisible = (button, entities, visible) => {
-	  if (visible) {
-	    button.classList.add("selected");
-	  } else {
-	    button.classList.remove("selected");
-	  }
-	  entities.forEach((entity) => {
-	    entity.setAttribute("visible", visible);
-	  });
-	}
-	list.forEach((item, index) => {
-	  const button = document.querySelector("#" + item);
-	  const entities = document.querySelectorAll("." + item + "-entity");
-	  setVisible(button, entities, visibles[index]);
-	  button.addEventListener('click', () => {
-	    visibles[index] = !visibles[index];
-	    setVisible(button, entities, visibles[index]);
-	  });
+	const sceneEl = document.querySelector('a-scene');
+	const arSystem = sceneEl.systems["mindar-image-system"];
+	const exampleTarget = document.querySelector('#example-target');
+	const exampleTargetLink = document.querySelector('#example-target-link');
+
+	const compatibilityOverlay = document.querySelector("#example-compatibility-overlay");
+	const loadingOverlay = document.querySelector("#example-loading-overlay");
+	const controlOverlay = document.querySelector("#example-control-overlay");
+
+	const startButton = document.querySelector("#example-start-button");
+	const pauseButton = document.querySelector("#example-pause-button");
+	const unpauseButton = document.querySelector("#example-unpause-button");
+	const stopButton = document.querySelector("#example-stop-button");
+	const stopARButton = document.querySelector("#example-stop-ar-button");
+
+	// arReady event triggered when ready
+        sceneEl.addEventListener("arReady", (event) => {
+	  loadingOverlay.style.display = "none";
+        });
+
+	// arError event triggered when something went wrong. Mostly browser compatbility issue
+        sceneEl.addEventListener("arError", (event) => {
+	  loadingOverlay.style.display = "none";
+	  compatibilityOverlay.style.display = "block";
+        });
+
+	// detect click event on tracking object
+        exampleTargetLink.addEventListener("click", event => {
+          console.log("clicked...");
+        });
+
+	// detect target found
+        exampleTarget.addEventListener("targetFound", event => {
+          console.log("target found");
+        });
+
+	// detect target lost
+        exampleTarget.addEventListener("targetLost", event => {
+          console.log("target lost");
+        });
+
+        exampleTarget.addEventListener("targetUpdate", event => {
+          console.log("target position update");
+        });
+
+
+	loadingOverlay.style.display = "block";
+	controlOverlay.style.display = "block";
+
+	startButton.addEventListener('click', () => {
+	  arSystem.start(); // start AR 
+        });
+	stopButton.addEventListener('click', () => {
+	  arSystem.stop(); // stop
 	});
-      })
+	pauseButton.addEventListener('click', () => {
+	  arSystem.pause(true); // pause AR engine, but keep video feed
+	});
+	unpauseButton.addEventListener('click', () => {
+	  arSystem.unpause();
+	});
+      });
     </script>
+
     <style>
       body {
         margin: 0;
@@ -39,64 +81,78 @@
         width: 100%;
         height: 100%;
       }
-      .options-panel {
-	position: fixed;
-	left: 0;
-	top: 0;
-	z-index: 2;
+      .example-container .overlay {
+	display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        background: white;
+        opacity: 0.5;
+        z-index: 2;
       }
-      .options-panel img {
-	border: solid 2px;
-	width: 50px;
-	height: 50px;
-	object-fit: cover;
-	cursor: pointer;
+      .example-container .overlay .content {
+        font-size: 15px;
+        position: absolute;
+	width: 80%;
+        top: 50%;
+        transform: translate(10%, -50%);
+	text-align: center;
       }
-      .options-panel img.selected {
-	border-color: green;
+      .example-container .overlay .content .large-text{
+	font-size: 40px;
+      }
+      #example-control-overlay {
+	background: none;
+	height: 30px;
+      }
+      #example-control-overlay >div {
+	position: absolute;
+	right: 0;
       }
     </style>
   </head>
   <body>
     <div class="example-container">
-      <div class="options-panel">
-	<img id="hat1" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat/thumbnail.png"/>
-	<img id="hat2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat2/thumbnail.png"/>
-	<img id="glasses1" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses/thumbnail.png"/>
-	<img id="glasses2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses2/thumbnail.png"/>
-	<img id="earring" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/earring/thumbnail.png"/>
+      <div id="example-loading-overlay" class="overlay">
+        <div class="content">
+	  <p class="large-text">Loading...</p>
+	</div>
       </div>
-      <a-scene mindar-face embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      <div id="example-compatibility-overlay" class="overlay">
+        <div class="content">
+	  <p>Your device/browser is not compatible</p>
+	  <p>
+	    - For Android device, please use Chrome browser</br>
+	    - For iOS device, please use Safari browser
+	  </p>
+	</div>
+      </div>
+      <div id="example-control-overlay" class="overlay">
+	<div>
+	  <button id="example-start-button">Start</button>
+	  <button id="example-pause-button">Pause</button>
+	  <button id="example-unpause-button">Unpause</button>
+	  <button id="example-stop-button">Stop</button>
+	</div>
+      </div>
+
+      <a-scene mindar-image="imageTargetSrc: ./assets/card-example/card.mind; showStats: true; autoStart: false; uiLoading: no; uiError: no; uiScanning: no" embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         <a-assets>
-          <a-asset-item id="headModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
-          <a-asset-item id="glassesModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses/scene.gltf"></a-asset-item>
-          <a-asset-item id="glassesModel2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/glasses2/scene.gltf"></a-asset-item>
-          <a-asset-item id="hatModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat/scene.gltf"></a-asset-item>
-          <a-asset-item id="hatModel2" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/hat2/scene.gltf"></a-asset-item>
-          <a-asset-item id="earringModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/earring/scene.gltf"></a-asset-item>
+          <img id="card" src="./assets/card-example/card.png" />
+          <a-asset-item id="avatarModel" src="./assets/card-example/softmind/scene.gltf"></a-asset-item>
         </a-assets>
-        <a-camera active="false" position="0 0 0"></a-camera>
-	<!-- head occluder -->
-        <a-entity mindar-face-target="anchorIndex: 168">
-	  <a-gltf-model mindar-face-occluder position="0 -0.3 0.15"rotation="0 0 0" scale="0.065 0.065 0.065" src="#headModel"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 10">
-	  <a-gltf-model rotation="0 -0 0" position="0 1.0 -0.5" scale="0.35 0.35 0.35" src="#hatModel" class="hat1-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 10">
-	  <a-gltf-model rotation="0 -0 0" position="0 -0.2 -0.5" scale="0.008 0.008 0.008" src="#hatModel2" class="hat2-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 168">
-	  <a-gltf-model rotation="0 -0 0" position="0 0 0" scale="0.01 0.01 0.01" src="#glassesModel" class="glasses1-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 168">
-	  <a-gltf-model rotation="0 -90 0" position="0 -0.3 0" scale="0.6 0.6 0.6" src="#glassesModel2" class="glasses2-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 127">
-	  <a-gltf-model rotation="-0.1 -0 0" position="0 -0.3 -0.3" scale="0.05 0.05 0.05" src="#earringModel" class="earring-entity" visible="false"></a-gltf-model>
-        </a-entity>
-        <a-entity mindar-face-target="anchorIndex: 356">
-	  <a-gltf-model rotation="0.1 -0 0" position="0 -0.3 -0.3" scale="0.05 0.05 0.05" src="#earringModel" class="earring-entity" visible="false"></a-gltf-model>
+
+        <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="near: 10; far: 10000"></a-camera>
+
+        <a-entity id="example-target" mindar-image-target="targetIndex: 0">
+          <a-plane id="example-target-link" src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0">
+          </a-plane>
+
+          <a-gltf-model rotation="0 0 0 " position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"
+            animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
+          >
         </a-entity>
       </a-scene>
     </div>
