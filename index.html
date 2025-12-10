@@ -1,85 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>AR Experience</title>
-    
-    <!-- 1. Load A-Frame -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- 2. Load MindAR A-Frame Adapter -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-    <!-- 3. Load GIF Shader for animated textures -->
-    <script src="https://unpkg.com/aframe-gif-shader@0.2.0/dist/aframe-gif-shader.min.js"></script>
+<html>
+<head>
+  <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Your AR Business Card</title>
+        <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+            <style>
+                body { margin: 0; overflow: hidden; }
+                    #loading { 
+                          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                      display: flex; flex-direction: column; justify-content: center; align-items: center;
+                                            color: white; z-index: 1000; transition: opacity 0.5s;
+                                                }
+                                                    #loading.hidden { opacity: 0; pointer-events: none; }
+                                                        .spinner {
+                                                              border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white;
+                                                                    border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;
+                                                                        }
+                                                                            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                                                                                #info {
+                                                                                      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                                                                                            background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
+                                                                                                  border-radius: 25px; font-size: 14px; text-align: center;
+                                                                                                      }
+                                                                                                        </style>
+                                                                                                        </head>
+                                                                                                        <body>
+                                                                                                          <div id="loading">
+                                                                                                              <div class="spinner"></div>
+                                                                                                                  <h2>Loading AR...</h2>
+                                                                                                                      <p>Point camera at your business card</p>
+                                                                                                                        </div>
+                                                                                                                          <div id="info">📱 Point camera at business card</div>
 
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      }
-      #root {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 10;
-        pointer-events: none; /* Pass touches through to scene if needed */
-      }
-      /* AR video background is managed by MindAR, usually at z-index -2 */
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-  <body>
-    <!-- React App Container (UI Overlay) -->
-    <div id="root"></div>
+                                                                                                                            <a-scene 
+                                                                                                                                mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+                                                                                                                                    renderer="colorManagement: true" vr-mode-ui="enabled: false">
+                                                                                                                                        
+                                                                                                                                            <a-assets>
+                                                                                                                                                  <!-- YOUR MOTION FILES -->
+                                                                                                                                                        <video id="motion-video" preload="auto" playsinline muted loop>
+                                                                                                                                                                <source src="./assets/motion-card.webm" type="video/webm">
+                                                                                                                                                                        <source src="./assets/motion-card.mp4" type="video/mp4">
+                                                                                                                                                                              </video>
+                                                                                                                                                                                    <img id="motion-gif" src="./assets/motion-card.gif">
+                                                                                                                                                                                        </a-assets>
 
-    <!-- 
-      MindAR Scene 
-      - imageTargetSrc: Path to your compiled .mind file
-      - uiScanning: no (We will build a custom one in React)
-      - uiLoading: no (We will handle loading state in React)
-    -->
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiScanning: no;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <!-- Preload Assets -->
-      <a-assets>
-        <img id="card-gif" src="./motion-card-v2.gif" />
-      </a-assets>
+                                                                                                                                                                                            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Camera -->
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                                                                                                                                                                                                <!-- AR TARGET (your business card) -->
+                                                                                                                                                                                                    <a-entity mindar-image-target="targetIndex: 0">
+                                                                                                                                                                                                          
+                                                                                                                                                                                                                <!-- FULL-SCREEN MOTION VIDEO (Main Feature) -->
+                                                                                                                                                                                                                      <a-video 
+                                                                                                                                                                                                                              src="#motion-video"
+                                                                                                                                                                                                                                      position="0 0 0.01"
+                                                                                                                                                                                                                                              width="1.4" height="0.8"
+                                                                                                                                                                                                                                                      material="opacity: 0.95"
+                                                                                                                                                                                                                                                              autoplay></a-video>
 
-      <!-- Target Index 0 (First image in your targets.mind) -->
-      <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Plane with GIF Shader -->
-        <a-entity 
-          geometry="primitive: plane; height: 1; width: 1;" 
-          position="0 0 0" 
-          rotation="0 0 0" 
-          material="shader: gif; src: #card-gif; alphaTest: 0.5;">
-        </a-entity>
-      </a-entity>
-    </a-scene>
+                                                                                                                                                                                                                                                                    <!-- MOTION GIF (Alternative/Overlay) -->
+                                                                                                                                                                                                                                                                          <a-plane 
+                                                                                                                                                                                                                                                                                  src="#motion-gif"
+                                                                                                                                                                                                                                                                                          position="0 0.4 0.02"
+                                                                                                                                                                                                                                                                                                  width="0.4" height="0.4"
+                                                                                                                                                                                                                                                                                                          visible="false"></a-plane>
 
-    <!-- Entry Point -->
-    <script type="module" src="./index.tsx"></script>
-  <script type="module" src="/index.tsx"></script>
-</body>
-</html>
+                                                                                                                                                                                                                                                                                                                <!-- CUSTOMIZE YOUR INFO HERE -->
+                                                                                                                                                                                                                                                                                                                      <a-plane color="#667eea" opacity="0.9" position="0 -0.3 0" width="1.2" height="0.4"></a-plane>
+                                                                                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                                                                                  <a-text value="YOUR NAME" color="white" align="center" width="1.5" position="0 0.1 0.01" font="https://cdn.aframe.io/fonts/Roboto-msdf.json"></a-text>
+                                                                                                                                                                                                                                                                                                                                        <a-text value="Creative Developer" color="#e0e0e0" align="center" width="1.2" position="0 0 0.01" font="https://cdn.aframe.io/fonts/Roboto-msdf.json"></a-text>
+                                                                                                                                                                                                                                                                                                                                              <a-text value="📧 your@email.com" color="white" align="center" width="1.2" position="0 -0.08 0.01" font="https://cdn.aframe.io/fonts/Roboto-msdf.json"></a-text>
+                                                                                                                                                                                                                                                                                                                                                    <a-text value="📱 +1 (555) 123-4567" color="white" align="center" width="1.2" position="0 -0.18 0.01" font="https://cdn.aframe.io/fonts/Roboto-msdf.json"></a-text>
+                                                                                                                                                                                                                                                                                                                                                          
+                                                                                                                                                                                                                                                                                                                                                                <!-- Floating Animation -->
+                                                                                                                                                                                                                                                                                                                                                                      <a-sphere position="0.5 0.2 0.05" radius="0.08" color="white" opacity="0.8"
+                                                                                                                                                                                                                                                                                                                                                                              animation="property: scale; to: 1.3 1.3 1.3; dir: alternate; loop: true; dur: 1500"></a-sphere>
+                                                                                                                                                                                                                                                                                                                                                                                  </a-entity>
+                                                                                                                                                                                                                                                                                                                                                                                    </a-scene>
+
+                                                                                                                                                                                                                                                                                                                                                                                      <script>
+                                                                                                                                                                                                                                                                                                                                                                                          // Hide loading when ready
+                                                                                                                                                                                                                                                                                                                                                                                              document.querySelector('a-scene').addEventListener('loaded', () => {
+                                                                                                                                                                                                                                                                                                                                                                                                    document.getElementById('loading').classList.add('hidden');
+                                                                                                                                                                                                                                                                                                                                                                                                        });
+
+                                                                                                                                                                                                                                                                                                                                                                                                            // Target events
+                                                                                                                                                                                                                                                                                                                                                                                                                const target = document.querySelector('[mindar-image-target]');
+                                                                                                                                                                                                                                                                                                                                                                                                                    target.addEventListener('targetFound', () => {
+                                                                                                                                                                                                                                                                                                                                                                                                                          document.getElementById('info').innerHTML = '✨ AR Content Active!';
+                                                                                                                                                                                                                                                                                                                                                                                                                              });
+                                                                                                                                                                                                                                                                                                                                                                                                                                  target.addEventListener('targetLost', () => {
+                                                                                                                                                                                                                                                                                                                                                                                                                                        document.getElementById('info').innerHTML = '📱 Point at business card';
+                                                                                                                                                                                                                                                                                                                                                                                                                                            });
+                                                                                                                                                                                                                                                                                                                                                                                                                                              </script>
+                                                                                                                                                                                                                                                                                                                                                                                                                                              </body>
+                                                                                                                                                                                                                                                                                                                                                                                                                                              </html>
